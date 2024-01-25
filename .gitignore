@@ -1,5 +1,7 @@
 .vscode
 bin/
+build/
+lib/
 *.i
 *.ii
 *.gpu

@@ -1,0 +1,61 @@
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
+project(cmake_and_cuda LANGUAGES CXX CUDA)
+
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+ 
+find_package(GSL REQUIRED)
+find_package(GTest REQUIRED)
+
+file(GLOB_RECURSE GSL_LIB_FILES "src/src_ref/*.cpp")
+file(GLOB_RECURSE CUDA_LIB_FILES "src/src_cuda/*.cu")
+
+#Add flags to the C++ compilation
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O2")
+ 
+add_library(beta_gsl STATIC ${GSL_LIB_FILES} )
+ 
+# Request that particles be built with -std=c++11
+# As this is a public compile feature anything that links to 
+# particles will also build with -std=c++11
+target_compile_features(beta_gsl PUBLIC cxx_std_17)
+
+# Link against the GSL library
+target_link_libraries(beta_gsl PRIVATE GSL::gsl)
+
+
+add_library(beta_cuda STATIC ${CUDA_LIB_FILES} )
+target_compile_features(beta_cuda PUBLIC cxx_std_17)
+set_target_properties( beta_cuda
+                       PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+set_target_properties(beta_cuda PROPERTIES CUDA_ARCHITECTURES "86")
+
+ 
+# We need to explicitly state that we need all CUDA files in the 
+# particle library to be built with -dc as the member functions 
+# could be called by other libraries and executables
+#set_target_properties( beta_gsl
+#                       PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+ 
+add_executable(test_gtest src/test.cpp)
+target_link_libraries(test_gtest PRIVATE beta_gsl GTest::GTest GTest::Main)
+
+add_executable(main_test src/main.cpp)
+ 
+#set_property(TARGET main_test 
+#             PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+target_link_libraries(main_test PRIVATE beta_gsl)
+
+add_executable(main_cuda_test src/main_cu.cpp)
+set_target_properties( main_cuda_test
+                       PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+set_target_properties(main_cuda_test PROPERTIES CUDA_ARCHITECTURES "86")
+target_link_libraries(main_cuda_test PRIVATE beta_cuda)
+ 
+if(APPLE)
+  # We need to add the path to the driver (libcuda.dylib) as an rpath, 
+  # so that the static cuda runtime can find it at runtime.
+  set_property(TARGET main_cuda_test 
+               PROPERTY
+               BUILD_RPATH ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
+endif()

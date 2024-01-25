@@ -1,4 +1,4 @@
-#include "src_ref/BetaDistGsl.hpp"
+#include "src_cuda/BetaDistCuda.hpp"
 
 #include <chrono>
 #include <cstdlib>
@@ -28,11 +28,9 @@ main () {
     double beta = 0.1 * i;
     
     auto start = profile_clock_t::now();
-    for (int j = 0; j < 10e7; j++){
       //cerr << "alpha = " << alpha << ", beta = " << beta << " x[" << j << "] = " << x.at(j) << endl;
       //double y = betapdf(x.at(j), alpha, beta);
-      betacdf(x.at(j), alpha, beta);
-    }
+    betapdf_cuda(x, alpha, beta);
     auto end = profile_clock_t::now();
 
     cerr << "Time = " << profile_duration_t(end - start).count() << " itr[" << i << "]" << endl;
