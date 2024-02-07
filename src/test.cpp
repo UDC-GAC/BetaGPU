@@ -1,4 +1,5 @@
 #include "src_ref/BetaDistGsl.hpp"
+#include "src_cuda/BetaDistCuda.hpp"
 
 #include <chrono>
 #include <cstdlib>
@@ -7,6 +8,12 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+
+#define SMALL_SIZE 10e6
+#define MID_SIZE 10e7
+#define LARGE_SIZE 10e8
+
+#define PRECISION_TOLERANCE_DOUBLE 1e-7
 
 using std::vector;
 using std::cerr;
@@ -20,11 +27,11 @@ protected:
   void SetUp() override {
     // Code here will be called immediately after the constructor (right
     // before each test).
-    srand(time(NULL));
+    srand(seed);
 
-    x.resize(10e7);
+    x.resize(SMALL_SIZE);
 
-    for (int i = 0; i < 10e7; i++) {
+    for (int i = 0; i < SMALL_SIZE; i++) {
       x[i] = rand() / (double)RAND_MAX;
     }
 
@@ -32,25 +39,35 @@ protected:
     beta = 0.1;
   }
 
+const unsigned int seed = time(NULL);
 vector<double> x;
 double alpha;
 double beta;
 };
 
-
-// Test case for #cdf
-TEST_F(BETA_TEST, LoopTestCDF) {
-
-  for (int j = 0; j < 10e7; j++) {
-    betacdf(x.at(j), alpha, beta);
+TEST_F(BETA_TEST, SmallGSLTestPDF) {
+  vector<double> y1(SMALL_SIZE);
+  for (int j = 0; j < SMALL_SIZE; j++) {
+    y1.at(j) = betacdf(x.at(j), alpha, beta);
   }
 }
 
-// Test case for #pdf
-TEST_F(BETA_TEST, LoopTestPDF) {
+TEST_F(BETA_TEST, SmallCUDATestPDF) {
+  vector<double> y2 = betacdf_cuda(x, alpha, beta);
+}
 
-  for (int j = 0; j < 10e7; j++) {
-    betapdf(x.at(j), alpha, beta);
+// Test case for #pdf
+TEST_F(BETA_TEST, SmallComaprisonPDF) {
+
+  vector<double> y1(SMALL_SIZE), y2;
+
+  for (int j = 0; j < SMALL_SIZE; j++) {
+    y1.at(j) = betapdf(x.at(j), alpha, beta);
+  }
+  y2 = betapdf_cuda(x, alpha, beta);
+
+  for (int j = 0; j < SMALL_SIZE; j++) {
+    ASSERT_NEAR(y1.at(j), y2.at(j), PRECISION_TOLERANCE_DOUBLE);
   }
 }
 

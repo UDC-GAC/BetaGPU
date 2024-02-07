@@ -23,7 +23,7 @@ main () {
     x[i] = rand() / (double)RAND_MAX;
   }
 
-  for (int i = 1; i <= 100; i++) {
+  for (int i = 1; i <= 5; i++) {
     double alpha = 0.1 * i;
     double beta = 0.1 * i;
     
@@ -31,7 +31,7 @@ main () {
     for (int j = 0; j < 10e7; j++){
       //cerr << "alpha = " << alpha << ", beta = " << beta << " x[" << j << "] = " << x.at(j) << endl;
       //double y = betapdf(x.at(j), alpha, beta);
-      betacdf(x.at(j), alpha, beta);
+      otherbetacdf(x.at(j), alpha, beta);
     }
     auto end = profile_clock_t::now();
 

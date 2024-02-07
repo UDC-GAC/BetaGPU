@@ -28,9 +28,7 @@ main () {
     double beta = 0.1 * i;
     
     auto start = profile_clock_t::now();
-      //cerr << "alpha = " << alpha << ", beta = " << beta << " x[" << j << "] = " << x.at(j) << endl;
-      //double y = betapdf(x.at(j), alpha, beta);
-    betapdf_cuda(x, alpha, beta);
+    vector<double> results = betapdf_cuda(x, alpha, beta);
     auto end = profile_clock_t::now();
 
     cerr << "Time = " << profile_duration_t(end - start).count() << " itr[" << i << "]" << endl;
