@@ -9,9 +9,9 @@
 
 #include <gtest/gtest.h>
 
-#define SMALL_SIZE 10e6
-#define MID_SIZE 10e7
-#define LARGE_SIZE 10e8
+#define SMALL_SIZE 1e7
+#define MID_SIZE 1e8
+#define LARGE_SIZE 1e9
 
 #define PRECISION_TOLERANCE_DOUBLE 1e-7
 
@@ -47,6 +47,7 @@ double beta;
 
 TEST_F(BETA_TEST, SmallGSLTestPDF) {
   vector<double> y1(SMALL_SIZE);
+  cerr << "Size of x: " << x.size() << endl;
   for (int j = 0; j < SMALL_SIZE; j++) {
     y1.at(j) = betacdf(x.at(j), alpha, beta);
   }
