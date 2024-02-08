@@ -1,7 +1,12 @@
 cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
-project(cmake_and_cuda LANGUAGES CXX CUDA)
+project(beta_dist_cuda LANGUAGES CXX CUDA)
 
 enable_testing()
+
+set (CMAKE_CXX_STANDARD 17
+     CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_DEBUG_POSTFIX "d")
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
@@ -15,10 +20,20 @@ include(GoogleTest)
 file(GLOB_RECURSE GSL_LIB_FILES "src/src_ref/*.cpp")
 file(GLOB_RECURSE CUDA_LIB_FILES "src/src_cuda/*.cu")
 
+# Compilation modes
+if (NOT CMAKE_BUILD_TYPE)
+  set (CMAKE_BUILD_TYPE Release)
+endif()
+set (CMAKE_CXX_FLAGS_DEBUG "-g3 -O0 -p")
+set (CMAKE_CXX_FLAGS_RELEASE "-O3")
+
 #Add flags to the C++ compilation
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O0 -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -use_fast_math")
 #NCU para sacar reporte y luego nsight en mi maquina
+
+set(CMAKE_CUDA_FLAGS_DEBUG "-g -G -p")
+set(CMAKE_CUDA_FLAGS_RELEASE "-O3")
 
 #
 #

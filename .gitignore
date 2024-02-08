@@ -8,3 +8,6 @@ lib/
 *.ptx
 *.cubin
 *.fatbin
+
+output/*
+!output/.gitkeep

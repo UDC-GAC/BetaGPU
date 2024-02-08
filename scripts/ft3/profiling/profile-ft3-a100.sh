@@ -1,5 +1,5 @@
 #!/bin/sh
-#SBATCH -J test_beta_profile_A100
+#SBATCH -J output/test_beta_profile_A100
 #SBATCH -o %x-%j.txt
 #SBATCH -e %x-%j_err.txt
 #SBATCH -c 32
@@ -12,4 +12,4 @@ cd build
 cmake ..
 make clean
 make -j`nproc`
-ncu -o a100-profile -f "$@"
+ncu -o output/a100-profile -f "$@"
