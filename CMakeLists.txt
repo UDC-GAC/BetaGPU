@@ -24,7 +24,7 @@ file(GLOB_RECURSE CUDA_LIB_FILES "src/src_cuda/*.cu")
 if (NOT CMAKE_BUILD_TYPE)
   set (CMAKE_BUILD_TYPE Release)
 endif()
-set (CMAKE_CXX_FLAGS_DEBUG "-g3 -O0 -p")
+set (CMAKE_CXX_FLAGS_DEBUG "-g -O0 ")
 set (CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 #Add flags to the C++ compilation
@@ -32,7 +32,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -use_fast_math")
 #NCU para sacar reporte y luego nsight en mi maquina
 
-set(CMAKE_CUDA_FLAGS_DEBUG "-g -G -p")
+set(CMAKE_CUDA_FLAGS_DEBUG "-g -lineinfo")
 set(CMAKE_CUDA_FLAGS_RELEASE "-O3")
 
 #
@@ -134,7 +134,6 @@ endif()
 add_executable(benchmark_test src/profiling_tests/benchmark_test.cpp)
 set_target_properties( benchmark_test
                        PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-set_target_properties(benchmark_test PROPERTIES CUDA_ARCHITECTURES "86")
 target_link_libraries(benchmark_test PRIVATE beta_cuda beta_gsl OpenMP::OpenMP_CXX)
 
 if(APPLE)
