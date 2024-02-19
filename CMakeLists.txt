@@ -24,7 +24,7 @@ file(GLOB_RECURSE CUDA_LIB_FILES "src/src_cuda/*.cu")
 if (NOT CMAKE_BUILD_TYPE)
   set (CMAKE_BUILD_TYPE Release)
 endif()
-set (CMAKE_CXX_FLAGS_DEBUG "-g -O0 ")
+set (CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 set (CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 #Add flags to the C++ compilation
@@ -33,7 +33,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 #NCU para sacar reporte y luego nsight en mi maquina
 
 set(CMAKE_CUDA_FLAGS_DEBUG "-g -lineinfo")
-set(CMAKE_CUDA_FLAGS_RELEASE "-O3")
+set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math")
 
 #
 #
@@ -140,6 +140,19 @@ if(APPLE)
   # We need to add the path to the driver (libcuda.dylib) as an rpath, 
   # so that the static cuda runtime can find it at runtime.
   set_property(TARGET benchmark_test 
+               PROPERTY
+               BUILD_RPATH ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
+endif()
+
+add_executable(bench_base src/profiling_tests/bench.cu)
+set_target_properties( bench_base
+                       PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+target_link_libraries(bench_base PRIVATE beta_gsl OpenMP::OpenMP_CXX)
+
+if(APPLE)
+  # We need to add the path to the driver (libcuda.dylib) as an rpath, 
+  # so that the static cuda runtime can find it at runtime.
+  set_property(TARGET bench_base 
                PROPERTY
                BUILD_RPATH ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
 endif()

@@ -8,7 +8,7 @@ __global__ void betapdf_kernel(double *x, double *y, double alpha, double beta, 
     }
 }
 
-// CUDA kernel to compute the beta distribution
+// CUDA kernel launch to compute the beta distribution
 std::vector<double> betapdf_cuda(std::vector<double> x, double alpha, double beta){
     // Allocate memory on the device
     double *d_x, *d_y;
