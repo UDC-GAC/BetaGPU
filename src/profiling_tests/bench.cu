@@ -1,4 +1,5 @@
 #include "../src_ref/BetaDistGsl.hpp"
+#include "../src_cuda/BetaDistCuda.hpp"
 
 #include <chrono>
 #include <cstdlib>
@@ -197,7 +198,7 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, double a
       y = betapdf_cuda_self(x, alpha, beta);
       break;
     case CommandLineOptions::FunctionName::BETACDF:
-      y = betapdf_cuda_self(x, alpha, beta);
+      y = betapdf_cuda(x, alpha, beta);
       break;
     }
     break;

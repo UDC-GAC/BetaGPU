@@ -33,7 +33,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 #NCU para sacar reporte y luego nsight en mi maquina
 
 set(CMAKE_CUDA_FLAGS_DEBUG "-g -lineinfo")
-set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math")
+set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -use_fast_math --maxrregcount 32")
 
 #
 #
@@ -144,7 +144,7 @@ if(APPLE)
                BUILD_RPATH ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
 endif()
 
-add_executable(bench_base src/profiling_tests/bench.cu)
+add_executable(bench_base src/profiling_tests/bench.cu src/src_cuda/BetaDistCuda.cu)
 set_target_properties( bench_base
                        PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 target_link_libraries(bench_base PRIVATE beta_gsl OpenMP::OpenMP_CXX)
