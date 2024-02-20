@@ -25,7 +25,8 @@ struct CommandLineOptions {
   enum class ExecutionMode {
     SEQ,
     OMP,
-    CUDA
+    CUDA,
+    CUDA_F
   };
 
   enum class FunctionName {
@@ -76,7 +77,7 @@ static std::string get_help_message(std::string prog_name) {
   return "Usage: " + prog_name + R"( [num_elements] [num_iterations] [exec_mode] [function_name]
   num_elements: Number of elements in the input vector
   num_iterations: Number of iterations to run the test
-  exec_mode: Execution mode (seq, omp, cuda)
+  exec_mode: Execution mode (seq, omp, cuda, cuda_f)
   function_name: Name of the function to test (betapdf, betacdf)
 )";
 }
@@ -97,6 +98,8 @@ CommandLineOptions::ExecutionMode parse_exec_mode(char* str) {
     return CommandLineOptions::ExecutionMode::OMP;
   if (mode == "cuda")
     return CommandLineOptions::ExecutionMode::CUDA;
+  if (mode == "cuda_f")
+    return CommandLineOptions::ExecutionMode::CUDA_F;
   
   throw std::invalid_argument("Invalid execution mode" + mode + "\n\t Valid execution modes are: seq, omp, cuda");
 }
@@ -134,6 +137,8 @@ std::string mode_to_text(CommandLineOptions::ExecutionMode mode) {
     return "OpenMP";
   case CommandLineOptions::ExecutionMode::CUDA:
     return "CUDA";
+  case CommandLineOptions::ExecutionMode::CUDA_F:
+    return "CUDA_F";
   }
   return "Unknown";
 }
@@ -199,6 +204,17 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, double a
       break;
     case CommandLineOptions::FunctionName::BETACDF:
       y = betapdf_cuda(x, alpha, beta);
+      break;
+    }
+    break;
+  case CommandLineOptions::ExecutionMode::CUDA_F:
+    switch (options.function_name) {
+    case CommandLineOptions::FunctionName::BETAPDF:
+      cerr << "hello2" << endl;
+      y = betapdf_cuda_self(x, alpha, beta);
+      break;
+    case CommandLineOptions::FunctionName::BETACDF:
+      y = betapdf_cuda_self(x, alpha, beta);
       break;
     }
     break;
