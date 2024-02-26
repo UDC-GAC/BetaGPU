@@ -15,7 +15,7 @@ sleep 1
 make VERBOSE=1
 sleep 1
 
-EXECUTABLE=bin/bench_base
+EXECUTABLE=../bin/bench_base
 
 # run the script for different values of parametrs
 # for examples num elements = 10000000, 100000000 and 1000000000
