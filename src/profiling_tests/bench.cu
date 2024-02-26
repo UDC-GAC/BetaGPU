@@ -128,6 +128,9 @@ void print_execution_parameters(const CommandLineOptions& options) {
   cerr << "\tNumber of iterations: " << options.num_iterations << endl;
   cerr << "\tExecution mode: " << mode_to_text(options.exec_mode) << endl;
   cerr << "\tFunction name: " << function_to_test(options.function_name) << endl;
+  if (options.exec_mode == CommandLineOptions::ExecutionMode::OMP) {
+    cerr << "\tNumber of threads: " << omp_get_max_threads() << endl;
+  }
 }
 
 void execute_test(const CommandLineOptions& options, vector<double>& x, double alpha, double beta){
