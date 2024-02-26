@@ -7,10 +7,11 @@ set style histogram cluster gap 1
 
 set style fill solid noborder
 set auto x
-set yrange [0.1:*]
+set yrange [0.4:*]
+set ytics (0.5,1,2,4,8,16,32,64)
 set xrange [0:6]
 set key left top
-set key at 0.10, 10
+set key top left
 set logscale y 2
 set xlabel "Threads" font ",16"
 set ylabel "Speedup" font ",16"
