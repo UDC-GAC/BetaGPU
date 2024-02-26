@@ -147,6 +147,7 @@ endif()
 add_executable(bench_base src/profiling_tests/bench.cu src/src_cuda/BetaDistCuda.cu)
 set_target_properties( bench_base
                        PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+target_compile_options(bench_base PRIVATE $<$<COMPILE_LANGUAGE:CUDA>: --compiler-options -fopenmp -Xcompiler=-fopenmp>)
 target_link_libraries(bench_base PRIVATE beta_gsl OpenMP::OpenMP_CXX)
 
 if(APPLE)
