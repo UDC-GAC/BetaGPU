@@ -6,7 +6,7 @@
 #SBATCH --gres=gpu:a100:1
 #SBATCH -t 5:00
 
-module load cesga/2020 cuda/11.5.0
+module load cesga/2020 cuda/12.2.0
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 sleep 1
