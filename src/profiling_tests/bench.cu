@@ -40,39 +40,6 @@ struct CommandLineOptions {
   FunctionName function_name;
 };
 
-__global__ void betapdf_kernel_self(double *x, double *y, double alpha, double beta, size_t size){
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < size){
-        y[idx] = pow(x[idx], alpha - 1) * pow(1 - x[idx], beta - 1) * exp(lgamma(alpha + beta) - lgamma(alpha) - lgamma(beta));
-    }
-}
-
-// CUDA kernel launch to compute the beta distribution
-std::vector<double> betapdf_cuda_self(std::vector<double> x, double alpha, double beta){
-    // Allocate memory on the device
-    double *d_x, *d_y;
-    cudaMalloc(&d_x, x.size() * sizeof(double));
-    cudaMalloc(&d_y, x.size() * sizeof(double));
-
-    // Copy the data to the device
-    cudaMemcpy(d_x, x.data(), x.size() * sizeof(double), cudaMemcpyHostToDevice);
-
-    // Launch the kernel
-    int block_size = 256;
-    int n_blocks = x.size() / block_size + (x.size() % block_size == 0 ? 0 : 1);
-    betapdf_kernel_self<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, x.size());
-
-    // Copy the result back to the host
-    std::vector<double> y(x.size());
-    cudaMemcpy(y.data(), d_y, x.size() * sizeof(double), cudaMemcpyDeviceToHost);
-
-    // Free the memory on the device
-    cudaFree(d_x);
-    cudaFree(d_y);
-
-    return y;
-}
-
 static std::string get_help_message(std::string prog_name) {
   return "Usage: " + prog_name + R"( [num_elements] [num_iterations] [exec_mode] [function_name]
   num_elements: Number of elements in the input vector
@@ -167,6 +134,7 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, double a
   vector<double> y;
   switch (options.exec_mode) {
   case CommandLineOptions::ExecutionMode::SEQ:
+    y.resize(x.size());
     switch (options.function_name) {
     case CommandLineOptions::FunctionName::BETAPDF:
       for (size_t i = 0; i < x.size(); i++) {
@@ -181,6 +149,7 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, double a
     }
     break;
   case CommandLineOptions::ExecutionMode::OMP:
+    y.resize(x.size());
     switch (options.function_name) {
     case CommandLineOptions::FunctionName::BETAPDF:
       #pragma omp parallel for schedule(static, 64)
@@ -209,7 +178,7 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, double a
   case CommandLineOptions::ExecutionMode::CUDA_F:
     switch (options.function_name) {
     case CommandLineOptions::FunctionName::BETAPDF:
-      y = betapdf_cuda_self(x, alpha, beta);
+      y = betapdf_cuda(x, alpha, beta, GPU_Type::FLOAT);
       break;
     case CommandLineOptions::FunctionName::BETACDF:
       cerr << "CUDA FLOAT CDF not implemented" << endl;
