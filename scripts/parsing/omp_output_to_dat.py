@@ -57,24 +57,27 @@ def write_output_file(filename: str, executions: list[dict]) -> None:
     execution_threads.remove(0)
     execution_threads.sort()
 
-
     header = "+"
-    for execution_thread_num in execution_thread_num:
-        header += f"\t{execution_thread_num}"
+    for elementNum in elements:
+        header += f"\t{elementNum}"
 
     exec_time_lines = []
 
     base_executions = [execution for execution in executions if execution["Execution mode"] == "Sequential"]
 
-    for elementNum in elements:
-        current_line = f"{elementNum}"
+    base_times = {}
+    # Get base times 
+    for execution in base_executions:
+        base_times[execution.get("Number of elements")] = execution.get("ExecTime")
+        
 
-        execution = [execution for execution in base_executions if execution["Number of elements"] == elementNum][0]
-        base_time = execution.get("ExecTime")
-        current_executions = [execution for execution in executions if execution["Number of elements"] == elementNum and execution["Execution mode"] != "Sequential"]
-        current_executions.sort(key=lambda x: int(x["Number of threads"]))
+    for execution_thread_num in execution_threads:
+        current_line = f"{execution_thread_num}"
+
+        current_executions = [execution for execution in executions if int(execution.get("Number of threads", "0")) == execution_thread_num]
+        current_executions.sort(key=lambda x: x["Number of elements"])
         for current_execution in current_executions:
-            current_execution["Speedup"] = base_time / current_execution.get("ExecTime")
+            current_execution["Speedup"] = base_times.get(current_execution.get("Number of elements")) / current_execution.get("ExecTime")
             current_line += f"\t{current_execution.get('Speedup'):.2f}"
         
         exec_time_lines.append(current_line)

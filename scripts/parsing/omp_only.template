@@ -1,0 +1,21 @@
+set terminal pdf enhanced
+set output 'output/OMP_Scaling.pdf'
+
+set style data histogram 
+set style data linespoints
+set style histogram cluster gap 1
+
+set style fill solid noborder
+set auto x
+set yrange [0.1:*]
+set xrange [0:6]
+set key left top
+set key at 0.10, 10
+set logscale y 2
+set xlabel "Threads" font ",16"
+set ylabel "Speedup" font ",16"
+set tics font ", 16"
+set title "OpenMP BetaPDF scalability" font "Helvetica Bold, 22"
+plot 'output/omp.dat' using 2:xtic(1) title col lt rgb "#cc8888", \
+        '' using 3:xtic(1) title col lt rgb "#88cc88", \
+        '' using 4:xtic(1) title col lt rgb "#8888cc", \
