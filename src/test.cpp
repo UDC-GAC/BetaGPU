@@ -14,6 +14,7 @@
 #define LARGE_SIZE 1e9
 
 #define PRECISION_TOLERANCE_DOUBLE 1e-7
+#define PRECISION_TOLERANCE_FLOAT 1e-7
 
 using std::vector;
 using std::cerr;
@@ -69,6 +70,21 @@ TEST_F(BETA_TEST, SmallComaprisonPDF) {
 
   for (int j = 0; j < SMALL_SIZE; j++) {
     ASSERT_NEAR(y1.at(j), y2.at(j), PRECISION_TOLERANCE_DOUBLE);
+  }
+}
+
+// Test case for #pdf
+TEST_F(BETA_TEST, SmallComaprisonFloatPDF) {
+
+  vector<double> y1(SMALL_SIZE), y2;
+
+  for (int j = 0; j < SMALL_SIZE; j++) {
+    y1.at(j) = betapdf(x.at(j), alpha, beta);
+  }
+  y2 = betapdf_cuda(x, alpha, beta, GPU_Type::FLOAT);
+
+  for (int j = 0; j < SMALL_SIZE; j++) {
+    ASSERT_NEAR(y1.at(j), y2.at(j), PRECISION_TOLERANCE_FLOAT);
   }
 }
 

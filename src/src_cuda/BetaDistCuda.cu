@@ -61,11 +61,23 @@ std::vector<double> betapdf_cuda(std::vector<double> x, double alpha, double bet
 
     // Copy the result back to the host
     std::vector<double> y(x.size());
-    cudaMemcpy(y.data(), d_y, x.size() * sizeof(double), cudaMemcpyDeviceToHost);
+    if (precision == GPU_Type::DOUBLE)
+        cudaMemcpy(y.data(), d_y, x.size() * sizeof(double), cudaMemcpyDeviceToHost);
+    if (precision == GPU_Type::FLOAT || precision == GPU_Type::HALF){
+        std::vector<float> y_f(x.size());
+        cudaMemcpy(y_f.data(), d_y_f, x.size() * sizeof(float), cudaMemcpyDeviceToHost);
+        y = std::vector<double>(y_f.begin(), y_f.end());
+    }
 
     // Free the memory on the device
-    cudaFree(d_x);
-    cudaFree(d_y);
+    if (precision == GPU_Type::DOUBLE){
+        cudaFree(d_x);
+        cudaFree(d_y);
+    }
+    if (precision == GPU_Type::FLOAT || precision == GPU_Type::HALF){
+        cudaFree(d_x_f);
+        cudaFree(d_y_f);
+    }
 
     return y;
 }
