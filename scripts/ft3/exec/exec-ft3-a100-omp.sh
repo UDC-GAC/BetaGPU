@@ -3,7 +3,7 @@
 #SBATCH -o %x-%j.out
 #SBATCH -c 64
 #SBATCH --mem-per-cpu=1G
-#SBATCH --gres=gpu:a100:1
+#SBATCH --gres=gpu:a100:2
 #SBATCH -t 50:00
 
 module load cesga/2020 cuda/12.2.0
