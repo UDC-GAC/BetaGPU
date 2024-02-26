@@ -164,7 +164,7 @@ void print_execution_parameters(const CommandLineOptions& options) {
 }
 
 void execute_test(const CommandLineOptions& options, vector<double>& x, double alpha, double beta){
-  vector<double> y(x.size());
+  vector<double> y;
   switch (options.exec_mode) {
   case CommandLineOptions::ExecutionMode::SEQ:
     switch (options.function_name) {
@@ -199,22 +199,20 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, double a
   case CommandLineOptions::ExecutionMode::CUDA:
     switch (options.function_name) {
     case CommandLineOptions::FunctionName::BETAPDF:
-      cerr << "hello" << endl;
-      y = betapdf_cuda_self(x, alpha, beta);
+      y = betapdf_cuda(x, alpha, beta);
       break;
     case CommandLineOptions::FunctionName::BETACDF:
-      y = betapdf_cuda(x, alpha, beta);
+      cerr << "CUDA CDF not implemented" << endl;
       break;
     }
     break;
   case CommandLineOptions::ExecutionMode::CUDA_F:
     switch (options.function_name) {
     case CommandLineOptions::FunctionName::BETAPDF:
-      cerr << "hello2" << endl;
       y = betapdf_cuda_self(x, alpha, beta);
       break;
     case CommandLineOptions::FunctionName::BETACDF:
-      y = betapdf_cuda_self(x, alpha, beta);
+      cerr << "CUDA FLOAT CDF not implemented" << endl;
       break;
     }
     break;

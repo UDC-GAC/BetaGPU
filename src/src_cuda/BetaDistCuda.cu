@@ -1,5 +1,7 @@
 #include "BetaDistCuda.hpp"
 
+#include <cuda_fp16.h>
+
 
 __global__ void betapdf_kernel(double *x, double *y, double alpha, double beta, size_t size){
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -15,20 +17,47 @@ __global__ void betapdf_kernel_f(float *x, float *y, float alpha, float beta, si
     }
 }
 
+__global__ void betapdf_kernel_h(float *x, float *y, float alpha, float beta, size_t size){
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size){
+        y[idx] = powf(x[idx], alpha - 1) * powf(1 - x[idx], beta - 1) * expf(lgammaf(alpha + beta) - lgammaf(alpha) - lgammaf(beta));
+    }
+}
+
 // CUDA kernel launch to compute the beta distribution
 std::vector<double> betapdf_cuda(std::vector<double> x, double alpha, double beta, GPU_Type precision){
     // Allocate memory on the device
     double *d_x, *d_y;
-    cudaMalloc(&d_x, x.size() * sizeof(double));
-    cudaMalloc(&d_y, x.size() * sizeof(double));
+    float *d_x_f, *d_y_f, alpha_f, beta_f;
+    if (precision == GPU_Type::DOUBLE){
+        cudaMalloc(&d_x, x.size() * sizeof(double));
+        cudaMalloc(&d_y, x.size() * sizeof(double));
+    }
+    if (precision == GPU_Type::FLOAT || precision == GPU_Type::HALF){
+        alpha_f = (float)alpha;
+        beta_f = (float)beta;
+        cudaMalloc(&d_x_f, x.size() * sizeof(float));
+        cudaMalloc(&d_y_f, x.size() * sizeof(float));
+    }
 
     // Copy the data to the device
-    cudaMemcpy(d_x, x.data(), x.size() * sizeof(double), cudaMemcpyHostToDevice);
+    if (precision == GPU_Type::DOUBLE){
+        cudaMemcpy(d_x, x.data(), x.size() * sizeof(double), cudaMemcpyHostToDevice);
+    }
+    if (precision == GPU_Type::FLOAT || precision == GPU_Type::HALF){
+        std::vector<float> x_f(x.begin(), x.end());
+        cudaMemcpy(d_x_f, x_f.data(), x_f.size() * sizeof(float), cudaMemcpyHostToDevice);
+    }
 
     // Launch the kernel
     int block_size = 256;
     int n_blocks = x.size() / block_size + (x.size() % block_size == 0 ? 0 : 1);
-    betapdf_kernel<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, x.size());
+    if (precision == GPU_Type::DOUBLE)
+        betapdf_kernel<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, x.size());
+    if (precision == GPU_Type::FLOAT)
+        betapdf_kernel_f<<<n_blocks, block_size>>>(d_x_f, d_y_f, alpha, beta, x.size());
+    if (precision == GPU_Type::HALF)
+        betapdf_kernel_h<<<n_blocks, block_size>>>(d_x_f, d_y_f, alpha_f, beta_f, x.size());
 
     // Copy the result back to the host
     std::vector<double> y(x.size());
