@@ -1,0 +1,21 @@
+set terminal pdf enhanced
+set output 'output/MethodsComparisonBars.pdf'
+
+set style data histogram
+set style histogram
+
+set style fill solid border rgb "black"
+set auto x
+set yrange [0:*]
+set key left top
+set logscale y 2
+set key samplen 2 font ",8"
+set xtics rotate by 40 right
+set xlabel "Tamaño de datos" font ",16" 
+show xlabel
+set ylabel "Speedup" font ",16"
+show ylabel
+set title "Aceleración de diferentes métodos"
+plot 'output/exec.dat' using 2:xtic(1) title columnheader lt rgb "#ffaaaa", \
+        '' using 3:xtic(1) title columnheader lt rgb "#aaffaa", \
+        '' using 4:xtic(1) title columnheader lt rgb "#aaaaff" , \

@@ -11,3 +11,5 @@ lib/
 
 output/*
 !output/.gitkeep
+!output/line_plot.tex
+!output/bar_plot.tex
