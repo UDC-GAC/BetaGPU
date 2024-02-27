@@ -90,7 +90,7 @@ std::vector<double> betapdf_cuda(std::vector<double> x, double alpha, double bet
     return y;
 }
 
-std::vector<double> betapdf_cuda_times(std::vector<double> x, double alpha, double beta, GPU_Type precision=GPU_Type::DOUBLE){
+std::vector<double> betapdf_cuda_times(std::vector<double> x, double alpha, double beta, GPU_Type precision){
     auto t1 = profile_clock_t::now();
     // Allocate memory on the device
     double *d_x, *d_y;
@@ -156,4 +156,8 @@ std::vector<double> betapdf_cuda_times(std::vector<double> x, double alpha, doub
     cerr << " Memory transfer time = " << profile_duration_t(t2 - t1).count() << " + " << profile_duration_t(t4 - t3).count() << endl;
 
     return y;
+}
+
+std::vector<double> betacdf_cuda(std::vector<double> x, double alpha, double beta){
+    return std::vector<double>();
 }
