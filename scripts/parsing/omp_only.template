@@ -7,7 +7,7 @@ set style histogram cluster gap 1
 
 set style fill solid noborder
 set auto x
-set yrange [0.4:*]
+set yrange [0.4:120]
 set ytics (0.5,1,2,4,8,16,32,64)
 set xrange [0:6]
 set key left top
@@ -20,3 +20,4 @@ set title "OpenMP BetaPDF scalability" font "Helvetica Bold, 22"
 plot 'output/omp.dat' using 2:xtic(1) title col lt rgb "#cc8888", \
         '' using 3:xtic(1) title col lt rgb "#88cc88", \
         '' using 4:xtic(1) title col lt rgb "#8888cc", \
+        '' u 0:4:4  with labels font "Helvetica Bold,8" offset -8.75,1.25 title " ", \
