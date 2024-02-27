@@ -171,7 +171,11 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, double a
   case CommandLineOptions::ExecutionMode::CUDA:
     switch (options.function_name) {
     case CommandLineOptions::FunctionName::BETAPDF:
+      #ifdef DEBUG
+      y = betapdf_cuda_times(x, alpha, beta);
+      #else
       y = betapdf_cuda(x, alpha, beta);
+      #endif
       break;
     case CommandLineOptions::FunctionName::BETACDF:
       cerr << "CUDA CDF not implemented" << endl;
@@ -181,7 +185,11 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, double a
   case CommandLineOptions::ExecutionMode::CUDA_F:
     switch (options.function_name) {
     case CommandLineOptions::FunctionName::BETAPDF:
+      #ifdef DEBUG
+      y = betapdf_cuda_times(x, alpha, beta, GPU_Type::FLOAT);
+      #else
       y = betapdf_cuda(x, alpha, beta, GPU_Type::FLOAT);
+      #endif
       break;
     case CommandLineOptions::FunctionName::BETACDF:
       cerr << "CUDA FLOAT CDF not implemented" << endl;

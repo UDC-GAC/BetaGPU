@@ -2,6 +2,8 @@
 
 #include <cuda_fp16.h>
 
+#ifdef DEBUG
+
 #include <chrono>
 #include <iostream>
 
@@ -10,6 +12,8 @@ using std::endl;
 
 using profile_clock_t = std::chrono::high_resolution_clock;
 using profile_duration_t = std::chrono::duration<double>;
+
+#endif
 
 __global__ void betapdf_kernel(double *x, double *y, double alpha, double beta, size_t size){
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -90,7 +94,8 @@ std::vector<double> betapdf_cuda(std::vector<double> x, double alpha, double bet
     return y;
 }
 
-std::vector<double> betapdf_cuda_times(std::vector<double> x, double alpha, double beta, GPU_Type precision=GPU_Type::DOUBLE){
+#ifdef DEBUG
+std::vector<double> betapdf_cuda_times(std::vector<double> x, double alpha, double beta, GPU_Type precision){
     auto t1 = profile_clock_t::now();
     // Allocate memory on the device
     double *d_x, *d_y;
@@ -156,4 +161,9 @@ std::vector<double> betapdf_cuda_times(std::vector<double> x, double alpha, doub
     cerr << " Memory transfer time = " << profile_duration_t(t2 - t1).count() << " + " << profile_duration_t(t4 - t3).count() << endl;
 
     return y;
+}
+#endif
+
+std::vector<double> betacdf_cuda(std::vector<double> x, double alpha, double beta){
+    return std::vector<double>();
 }

@@ -8,6 +8,8 @@ enum class GPU_Type {
 
 std::vector<double> betapdf_cuda(std::vector<double> x, double alpha, double beta, GPU_Type precision=GPU_Type::DOUBLE);
 
+#ifdef DEBUG
 std::vector<double> betapdf_cuda_times(std::vector<double> x, double alpha, double beta, GPU_Type precision=GPU_Type::DOUBLE);
+#endif
 
 std::vector<double> betacdf_cuda(std::vector<double> x, double alpha, double beta);
