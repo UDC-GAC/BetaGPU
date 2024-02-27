@@ -2,7 +2,7 @@
 #SBATCH -J output/test_beta_profile_A100
 #SBATCH -o %x-%j.out
 #SBATCH -c 32
-#SBATCH --mem-per-cpu=1G
+#SBATCH --mem-per-cpu=4G
 #SBATCH --gres=gpu:a100:1
 #SBATCH -t 5:00
 
