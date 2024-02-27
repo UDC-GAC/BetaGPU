@@ -147,7 +147,7 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, double a
     case CommandLineOptions::FunctionName::BETAPDF:
       #pragma omp parallel for schedule(static, 64)
       for (size_t i = 0; i < x.size(); i++) {
-        y.at(i) = betacdf(x.at(i), alpha, beta);
+        y.at(i) = betapdf(x.at(i), alpha, beta);
       }
       break;
     case CommandLineOptions::FunctionName::BETACDF:
