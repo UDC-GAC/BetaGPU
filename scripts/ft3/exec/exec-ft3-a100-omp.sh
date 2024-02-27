@@ -2,9 +2,9 @@
 #SBATCH -J output/omp_exec_beta_pdf_A100
 #SBATCH -o %x-%j.out
 #SBATCH -c 64
-#SBATCH --mem-per-cpu=1G
+#SBATCH --mem-per-cpu=4G
 #SBATCH --gres=gpu:a100:2
-#SBATCH -t 50:00
+#SBATCH -t 59:00
 
 module load cesga/2020 cuda/12.2.0
 cd build
