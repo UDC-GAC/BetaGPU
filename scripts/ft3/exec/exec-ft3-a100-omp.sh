@@ -2,7 +2,7 @@
 #SBATCH -J output/omp_exec_beta_pdf_A100
 #SBATCH -o %x-%j.out
 #SBATCH -c 64
-#SBATCH --mem-per-cpu=4G
+#SBATCH --mem-per-cpu=3G
 #SBATCH --gres=gpu:a100:2
 #SBATCH -t 59:00
 
