@@ -96,7 +96,16 @@ std::vector<double> betapdf_cuda(std::vector<double> x, double alpha, double bet
 
 #ifdef DEBUG
 std::vector<double> betapdf_cuda_times(std::vector<double> x, double alpha, double beta, GPU_Type precision){
-    auto t1 = profile_clock_t::now();
+    cudaEvent_t t1, t2, t3, t4;
+    float elapsedMemcpyCG, elapsedKernel, elapsedMemcpyGC, elapsedTotal;
+    cudaEventCreate(&t1);
+    cudaEventCreate(&t2);
+    cudaEventCreate(&t3);
+    cudaEventCreate(&t4);
+
+    auto start = profile_clock_t::now();
+
+    cudaEventRecord(t1, 0);
     // Allocate memory on the device
     double *d_x, *d_y;
     float *d_x_f, *d_y_f, alpha_f, beta_f;
@@ -120,7 +129,9 @@ std::vector<double> betapdf_cuda_times(std::vector<double> x, double alpha, doub
         cudaMemcpy(d_x_f, x_f.data(), x_f.size() * sizeof(float), cudaMemcpyHostToDevice);
     }
 
-    auto t2 = profile_clock_t::now();
+    cudaEventRecord(t2, 0);
+    cudaEventSynchronize(t2);
+    cudaEventElapsedTime(&elapsedMemcpyCG, t1, t2);
 
     // Launch the kernel
     int block_size = 256;
@@ -132,7 +143,9 @@ std::vector<double> betapdf_cuda_times(std::vector<double> x, double alpha, doub
     if (precision == GPU_Type::HALF)
         betapdf_kernel_h<<<n_blocks, block_size>>>(d_x_f, d_y_f, alpha_f, beta_f, x.size());
 
-    auto t3 = profile_clock_t::now();
+    cudaEventRecord(t3, 0);
+    cudaEventSynchronize(t3);
+    cudaEventElapsedTime(&elapsedKernel, t2, t3);
 
     // Copy the result back to the host
     std::vector<double> y(x.size());
@@ -154,11 +167,17 @@ std::vector<double> betapdf_cuda_times(std::vector<double> x, double alpha, doub
         cudaFree(d_y_f);
     }
 
-    auto t4 = profile_clock_t::now();
+    cudaEventRecord(t4, 0);
+    cudaEventSynchronize(t4);
+    cudaEventElapsedTime(&elapsedMemcpyGC, t3, t4);
+    cudaEventElapsedTime(&elapsedTotal, t1, t4);
 
-    cerr << "Full function time = " << profile_duration_t(t4 - t1).count() << endl;
-    cerr << " Kernel execution time = " << profile_duration_t(t3 - t2).count() << endl;
-    cerr << " Memory transfer time = " << profile_duration_t(t2 - t1).count() << " + " << profile_duration_t(t4 - t3).count() << endl;
+    auto end = profile_clock_t::now();
+
+    cerr << "Full function time(chrono) = " << profile_duration_t(end - start).count() << endl;
+    cerr << "Full function time(events) = " << elapsedTotal / 1000 << endl;
+    cerr << " Kernel execution time = " << elapsedKernel / 1000 << endl;
+    cerr << " Memory transfer time = " << elapsedMemcpyCG / 1000 << " + " << elapsedMemcpyGC / 1000 << endl;
 
     return y;
 }
