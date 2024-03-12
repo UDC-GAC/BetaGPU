@@ -36,6 +36,116 @@ __global__ void betapdf_kernel_h(float *x, float *y, float alpha, float beta, si
     }
 }
 
+// TODO: Implement the beta distribution CDF using the continued fraction
+__device__ double cuda_beta_cont_frac(double alpha, double beta, double x, double epsabs){
+    const unsigned int max_iter = 512;
+    const double cutoff = 2. * CUDA_DBL_MIN;
+    double cf;
+    double delta_frac;
+
+    double num_term = 1.;
+    double denom_term = 1. - (alpha + beta) * x / (alpha + 1.);
+
+    if (fabs(denom_term) < cutoff)
+        denom_term = __nan("");
+
+    denom_term = 1. / denom_term;
+    cf = denom_term;
+
+    for (unsigned int iter = 0; iter < max_iter; iter++){
+        
+        const unsigned int k = iter + 1;
+        double coeff = k * (beta - k) * x / (((alpha - 1.) + 2 * k) * (alpha + 2 * k));
+        
+
+        /* first step */
+        denom_term = 1. + coeff * denom_term;
+        num_term = 1. + coeff / num_term;
+
+        if (fabs(denom_term) < cutoff)
+            denom_term = __nan("");
+
+        if (fabs(num_term) < cutoff)
+            num_term = __nan("");
+
+        denom_term = 1. / denom_term;
+
+        delta_frac = denom_term * num_term;
+        cf *= delta_frac;
+
+        coeff = -(alpha + k) * (alpha + beta + k) * x / ((alpha + 2 * k) * (alpha + 2 * k + 1.));
+    
+        /* second step */
+        denom_term = 1. + coeff * denom_term;
+        num_term = 1. + coeff / num_term;
+
+        if (fabs(denom_term) < cutoff)
+            denom_term = __nan("");
+
+        if (fabs(num_term) < cutoff)
+            num_term = __nan("");
+
+        denom_term = 1. / denom_term;
+
+        delta_frac = denom_term * num_term;
+        cf *= delta_frac;
+
+        /* last iteration checks */
+        //if (fabs(delta_frac - 1.) < 2. * CUDA_DBL_EPSILON)
+        //    break;
+
+        //if (cf * fabs(delta_frac - 1.) < epsabs)
+        //    break;
+    
+    }
+
+    // These checks are originally done within the loop
+    // If this logic within the loop is modified, this should be modified as well
+    //if (fabs(delta_frac - 1.) < 2. * CUDA_DBL_EPSILON || cf * fabs(delta_frac - 1.) < epsabs)
+    //    return __nan("");
+        
+    return cf;
+
+}
+
+__global__ void betacdf_dirCF_kernel(double *x, double *y, double alpha, double beta, size_t size){
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    double a = alpha;
+    double b = beta;
+    if (idx < size){
+        double my_x = x[idx];
+
+        double ln_beta = lgamma(a + b) - lgamma(a) - lgamma(b);
+        double ln_pre = -ln_beta + a * log(my_x) + b * log1p(-my_x);
+        double prefactor = exp(ln_pre);
+
+        double epsabs = 0.;
+        double cf = cuda_beta_cont_frac(a, b, my_x, epsabs);
+
+        y[idx] = prefactor * cf / a;
+        
+    }
+}
+
+__global__ void betacdf_hypergeoCF_kernel(double *x, double *y, double alpha, double beta, size_t size){
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    double a = alpha;
+    double b = beta;
+    if (idx < size){
+        double my_x = x[idx];
+
+        double ln_beta = lgamma(a + b) - lgamma(a) - lgamma(b);
+        double ln_pre = -ln_beta + a * log(my_x) + b * log1p(-my_x);
+        double prefactor = exp(ln_pre);
+
+        double epsabs = 1. / (prefactor / b) * CUDA_DBL_EPSILON;
+        double cf = cuda_beta_cont_frac(a, b, my_x, epsabs);
+
+        y[idx] = prefactor * cf / a;
+        
+    }
+}
+
 // CUDA kernel launch to compute the beta distribution
 std::vector<double> betapdf_cuda(std::vector<double> x, double alpha, double beta, GPU_Type precision){
     // Allocate memory on the device
