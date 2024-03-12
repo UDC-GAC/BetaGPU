@@ -1,6 +1,7 @@
 #include "src_ref/BetaDistGsl.hpp"
 #include "src_cuda/BetaDistCuda.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdlib>
 #include <ctime>
@@ -74,14 +75,17 @@ TEST_F(BETA_TEST, SmallComaprisonPDF) {
 }
 
 // Test case for #pdf
-TEST_F(BETA_TEST, SmallComaprisonFloatPDF) {
+TEST_F(BETA_TEST, SmallComparisonFloatPDF) {
 
-  vector<double> y1(SMALL_SIZE), y2;
+  vector<double> y1(SMALL_SIZE), y2(SMALL_SIZE);
+  vector<float> x_f(SMALL_SIZE);
+  std::transform(x.begin(), x.end(), x_f.begin(), [](double d) { return (float)d; });
 
   for (int j = 0; j < SMALL_SIZE; j++) {
     y1.at(j) = betapdf(x.at(j), alpha, beta);
   }
-  y2 = betapdf_cuda(x, alpha, beta, GPU_Type::FLOAT);
+  vector<float> y_f = betapdf_cuda(x_f, static_cast<float>(alpha), static_cast<float>(beta));
+  std::transform(y_f.begin(), y_f.end(), y2.begin(), [](float f) { return (double)f; });
 
   for (int j = 0; j < SMALL_SIZE; j++) {
     ASSERT_NEAR(y1.at(j), y2.at(j), PRECISION_TOLERANCE_FLOAT);

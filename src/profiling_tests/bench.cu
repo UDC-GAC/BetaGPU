@@ -1,6 +1,7 @@
 #include "../src_ref/BetaDistGsl.hpp"
 #include "../src_cuda/BetaDistCuda.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdlib>
 #include <ctime>
@@ -133,8 +134,9 @@ void print_execution_parameters(const CommandLineOptions& options) {
   }
 }
 
-void execute_test(const CommandLineOptions& options, vector<double>& x, double alpha, double beta){
+void execute_test(const CommandLineOptions& options, vector<double>& x, vector<float>& x_f, double alpha, double beta){
   vector<double> y;
+  vector<float> y_f;
   switch (options.exec_mode) {
   case CommandLineOptions::ExecutionMode::SEQ:
     y.resize(x.size());
@@ -188,7 +190,7 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, double a
       #ifdef DEBUG
       y = betapdf_cuda_times(x, alpha, beta, GPU_Type::FLOAT);
       #else
-      y = betapdf_cuda(x, alpha, beta, GPU_Type::FLOAT);
+      y_f = betapdf_cuda(x_f, static_cast<float>(alpha), static_cast<float>(beta));
       #endif
       break;
     case CommandLineOptions::FunctionName::BETACDF:
@@ -206,11 +208,14 @@ main (int argc, char *argv[]) {
   print_execution_parameters(options);
   
   vector<double> x(options.num_elements);
+  vector<float> x_f(options.num_elements);
   
 
   for (int i = 0; i < options.num_elements; i++) {
     x[i] = rand() / (double)RAND_MAX;
   }
+
+  std::transform(x.begin(), x.end(), x_f.begin(), [](double x) { return (float)x; });
 
   auto full_start = profile_clock_t::now();
   for (int i = 1; i <= options.num_iterations; i++) {
@@ -218,7 +223,7 @@ main (int argc, char *argv[]) {
     double beta = 0.1 * i;
     
     auto start = profile_clock_t::now();
-    execute_test(options, x, alpha, beta);
+    execute_test(options, x, x_f, alpha, beta);
     auto end = profile_clock_t::now();
 
     cerr << "Itr[" << i << "]\t\tTime = \t\t" << profile_duration_t(end - start).count() << endl;
