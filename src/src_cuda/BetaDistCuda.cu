@@ -47,7 +47,7 @@ __device__ double cuda_beta_cont_frac(double alpha, double beta, double x, doubl
     double denom_term = 1. - (alpha + beta) * x / (alpha + 1.);
 
     if (fabs(denom_term) < cutoff)
-        denom_term = __nan("");
+        denom_term = nan("");
 
     denom_term = 1. / denom_term;
     cf = denom_term;
@@ -63,10 +63,10 @@ __device__ double cuda_beta_cont_frac(double alpha, double beta, double x, doubl
         num_term = 1. + coeff / num_term;
 
         if (fabs(denom_term) < cutoff)
-            denom_term = __nan("");
+            denom_term = nan("");
 
         if (fabs(num_term) < cutoff)
-            num_term = __nan("");
+            num_term = nan("");
 
         denom_term = 1. / denom_term;
 
@@ -80,10 +80,10 @@ __device__ double cuda_beta_cont_frac(double alpha, double beta, double x, doubl
         num_term = 1. + coeff / num_term;
 
         if (fabs(denom_term) < cutoff)
-            denom_term = __nan("");
+            denom_term = nan("");
 
         if (fabs(num_term) < cutoff)
-            num_term = __nan("");
+            num_term = nan("");
 
         denom_term = 1. / denom_term;
 
@@ -102,7 +102,7 @@ __device__ double cuda_beta_cont_frac(double alpha, double beta, double x, doubl
     // These checks are originally done within the loop
     // If this logic within the loop is modified, this should be modified as well
     //if (fabs(delta_frac - 1.) < 2. * CUDA_DBL_EPSILON || cf * fabs(delta_frac - 1.) < epsabs)
-    //    return __nan("");
+    //    return nan("");
         
     return cf;
 
