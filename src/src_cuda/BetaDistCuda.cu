@@ -139,15 +139,48 @@ __global__ void betacdf_hypergeoCF_kernel(double *x, double *y, double alpha, do
         double prefactor = exp(ln_pre);
 
         double epsabs = 1. / (prefactor / b) * CUDA_DBL_EPSILON;
-        double cf = cuda_beta_cont_frac(a, b, my_x, epsabs);
+        double cf = cuda_beta_cont_frac(b, a, 1. - my_x, epsabs);
 
-        y[idx] = prefactor * cf / a;
-        
+        double term = prefactor * cf / b;
+
+        y[idx] = 1. - term;
     }
 }
 
+// https://github.com/ampl/gsl/blob/master/specfunc/gamma_inc.c#L500
+__global__ void betacdf_la_sb_kernel(double *x, double *y, double alpha, double beta, size_t size){
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    double a = alpha;
+    double b = beta;
+    if (idx < size){
+        double my_x = x[idx];
+        double N = a + (b - 1.) / 2.;
+        double my_x = -N * log1p(-my_x);
+
+        y[idx] = nan("");
+        return;
+    }
+}
+
+// https://github.com/ampl/gsl/blob/master/specfunc/gamma_inc.c#L581
+__global__ void betacdf_sa_lb_kernel_f(float *x, float *y, float alpha, float beta, size_t size){
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    float a = alpha;
+    float b = beta;
+    if (idx < size){
+        float my_x = x[idx];
+        float N = b + (a - 1.) / 2.;
+        float my_x = -N * log1pf(-my_x);
+
+        y[idx] = nanf("");
+        return;
+    }
+}
+
+
+
 // CUDA kernel launch to compute the beta distribution
-std::vector<double> betapdf_cuda(std::vector<double> x, double alpha, double beta, GPU_Type precision){
+std::vector<double> betapdf_cuda(std::vector<double> &x, double alpha, double beta, GPU_Type precision){
     // Allocate memory on the device
     double *d_x, *d_y;
     float *d_x_f, *d_y_f, alpha_f, beta_f;
@@ -205,7 +238,7 @@ std::vector<double> betapdf_cuda(std::vector<double> x, double alpha, double bet
 }
 
 #ifdef DEBUG
-std::vector<double> betapdf_cuda_times(std::vector<double> x, double alpha, double beta, GPU_Type precision){
+std::vector<double> betapdf_cuda_times(std::vector<double> &x, double alpha, double beta, GPU_Type precision){
     cudaEvent_t t1, t2, t3, t4;
     float elapsedMemcpyCG, elapsedKernel, elapsedMemcpyGC, elapsedTotal;
     cudaEventCreate(&t1);
@@ -293,6 +326,30 @@ std::vector<double> betapdf_cuda_times(std::vector<double> x, double alpha, doub
 }
 #endif
 
-std::vector<double> betacdf_cuda(std::vector<double> x, double alpha, double beta){
-    return std::vector<double>();
+std::vector<double> betacdf_cuda(std::vector<double> &x, double alpha, double beta){
+
+    // Allocate memory on the device
+    double *d_x, *d_y;
+    cudaMalloc(&d_x, x.size() * sizeof(double));
+    cudaMalloc(&d_y, x.size() * sizeof(double));
+
+    // ...
+
+    // Cuda data to device
+    cudaMemcpy(d_x, x.data(), x.size() * sizeof(double), cudaMemcpyHostToDevice);
+
+
+    // Launch the kernel(s)
+
+    // ...
+
+    // Copy the result back to the host
+    std::vector<double> y(x.size());
+    cudaMemcpy(y.data(), d_y, x.size() * sizeof(double), cudaMemcpyDeviceToHost);
+
+    // Free the memory on the device
+    cudaFree(d_x);
+    cudaFree(d_y);
+
+    return y;
 }
