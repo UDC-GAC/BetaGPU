@@ -155,7 +155,7 @@ __global__ void betacdf_la_sb_kernel(double *x, double *y, double alpha, double 
     if (idx < size){
         double my_x = x[idx];
         double N = a + (b - 1.) / 2.;
-        double my_x = -N * log1p(-my_x);
+        my_x = -N * log1p(-my_x);
 
         y[idx] = nan("");
         return;
@@ -170,7 +170,7 @@ __global__ void betacdf_sa_lb_kernel_f(float *x, float *y, float alpha, float be
     if (idx < size){
         float my_x = x[idx];
         float N = b + (a - 1.) / 2.;
-        float my_x = -N * log1pf(-my_x);
+        my_x = -N * log1pf(-my_x);
 
         y[idx] = nanf("");
         return;
