@@ -1,5 +1,6 @@
 if (!exists("in_filename")) in_filename='output/exec.dat'
 if (!exists("out_filename")) out_filename='output/MethodsComparisonBars.pdf'
+max(a,b) = (a > b) ? a : b
 
 set terminal pdf enhanced
 set output out_filename
@@ -7,9 +8,19 @@ set output out_filename
 set style data histogram
 set style histogram
 
+stats in_filename using 2 nooutput
+max2 = STATS_max
+stats in_filename using 3 nooutput
+max3 = STATS_max
+stats in_filename using 4 nooutput
+max4 = STATS_max
+
+# Find the maximum value across the columns
+max_value = max(max2, max(max3, max4))
+
 set style fill solid border rgb "black"
 set auto x
-set yrange [0:74]
+set yrange [0:max_value * 1.15]
 set key left top
 set logscale y 2
 unset logscale y
