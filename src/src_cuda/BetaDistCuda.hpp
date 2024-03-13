@@ -11,6 +11,8 @@ enum class GPU_Type {
 
 std::vector<double> betapdf_cuda(const std::vector<double> &x, const double alpha, const double beta);
 
+double* betapdf_cuda_pinned(const std::vector<double> &x, const double alpha, const double beta);
+
 std::vector<float> betapdf_cuda(const std::vector<float> &x, const float alpha, const float beta);
 
 std::vector<double> betacdf_cuda(std::vector<double> &x, double alpha, double beta);
