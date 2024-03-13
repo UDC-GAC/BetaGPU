@@ -4,7 +4,7 @@
 #SBATCH -c 32
 #SBATCH --mem-per-cpu=3G
 #SBATCH --gres=gpu:a100:1
-#SBATCH -t 20:00
+#SBATCH -t 30:00
 
 module load cesga/2020 cuda/12.2.0
 cd build
@@ -22,8 +22,11 @@ EXECUTABLE=../bin/bench_base
 
 for i in 10000000 100000000 1000000000
 do
-    for j in cuda cuda_f omp seq
+    for j in cuda cuda_f omp
     do
-        OMP_NUM_THREADS=32 $EXECUTABLE $i 5 $j betapdf
+        for f in betapdf betacdf
+        do
+            OMP_NUM_THREADS=32 $EXECUTABLE $i 5 $j $f
+        done
     done
 done
