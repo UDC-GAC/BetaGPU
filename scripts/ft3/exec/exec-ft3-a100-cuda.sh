@@ -27,6 +27,7 @@ do
         for f in betapdf
         do
             OMP_NUM_THREADS=32 $EXECUTABLE $i 7 $j $f
+            OMP_NUM_THREADS=32 $EXECUTABLE $i 7 $j $f -p
         done
     done
 done
