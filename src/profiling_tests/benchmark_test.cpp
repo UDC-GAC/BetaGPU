@@ -162,7 +162,7 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, double a
     switch (options.function_name) {
     case CommandLineOptions::FunctionName::BETAPDF:
       cerr << "hello" << endl;
-      y = betapdf_cuda(x, alpha, beta);
+      betapdf_cuda(x.data(), y.data(), alpha, beta, x.size());
       break;
     case CommandLineOptions::FunctionName::BETACDF:
       y = betacdf_cuda(x, alpha, beta);

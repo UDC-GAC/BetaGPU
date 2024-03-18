@@ -62,12 +62,12 @@ TEST_F(BETA_TEST, SmallCUDATestPDF) {
 // Test case for #pdf
 TEST_F(BETA_TEST, SmallComaprisonPDF) {
 
-  vector<double> y1(SMALL_SIZE), y2;
+  vector<double> y1(SMALL_SIZE), y2(SMALL_SIZE);
 
   for (int j = 0; j < SMALL_SIZE; j++) {
     y1.at(j) = betapdf(x.at(j), alpha, beta);
   }
-  y2 = betapdf_cuda(x, alpha, beta);
+  betapdf_cuda(x.data(), y2.data(), alpha, beta, SMALL_SIZE);
 
   for (int j = 0; j < SMALL_SIZE; j++) {
     ASSERT_NEAR(y1.at(j), y2.at(j), PRECISION_TOLERANCE_DOUBLE);

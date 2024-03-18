@@ -17,6 +17,7 @@ int
 main () {
   
   vector<double> x(10e7);
+  vector <double> y(10e7);
   
 
   for (int i = 0; i < 10e7; i++) {
@@ -28,7 +29,7 @@ main () {
     double beta = 0.1 * i;
     
     auto start = profile_clock_t::now();
-    vector<double> results = betapdf_cuda(x, alpha, beta);
+    betapdf_cuda(x.data(), y.data(), alpha, beta, x.size());
     auto end = profile_clock_t::now();
 
     cerr << "Time = " << profile_duration_t(end - start).count() << " itr[" << i << "]" << endl;
