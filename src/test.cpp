@@ -78,13 +78,13 @@ TEST_F(BETA_TEST, SmallComaprisonPDF) {
 TEST_F(BETA_TEST, SmallComparisonFloatPDF) {
 
   vector<double> y1(SMALL_SIZE), y2(SMALL_SIZE);
-  vector<float> x_f(SMALL_SIZE);
+  vector<float> x_f(SMALL_SIZE), y_f(SMALL_SIZE);
   std::transform(x.begin(), x.end(), x_f.begin(), [](double d) { return (float)d; });
 
   for (int j = 0; j < SMALL_SIZE; j++) {
     y1.at(j) = betapdf(x.at(j), alpha, beta);
   }
-  vector<float> y_f = betapdf_cuda(x_f, static_cast<float>(alpha), static_cast<float>(beta));
+  betapdf_cuda(x_f.data(), y_f.data(), static_cast<float>(alpha), static_cast<float>(beta) , SMALL_SIZE);
   std::transform(y_f.begin(), y_f.end(), y2.begin(), [](float f) { return (double)f; });
 
   for (int j = 0; j < SMALL_SIZE; j++) {

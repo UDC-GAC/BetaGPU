@@ -39,6 +39,7 @@ struct CommandLineOptions {
   int num_iterations;
   ExecutionMode exec_mode;
   FunctionName function_name;
+  bool using_pinned_memory;
 };
 
 static std::string get_help_message(std::string prog_name) {
@@ -47,6 +48,7 @@ static std::string get_help_message(std::string prog_name) {
   num_iterations: Number of iterations to run the test
   exec_mode: Execution mode (seq, omp, cuda, cuda_f)
   function_name: Name of the function to test (betapdf, betacdf)
+  -p: Use pinned memory (only for CUDA mode)
 )";
 }
 
@@ -81,10 +83,28 @@ CommandLineOptions::FunctionName parse_function_name(char* str) {
   
   throw std::invalid_argument("Invalid function name" + mode + "\n\t Valid function names are: betapdf, betacdf");
 }
+
+void parse_leftover_args(int argc, char *argv[], CommandLineOptions& options) {
+  for (int i = 0; i < argc; i++) {
+    std::string arg(argv[i]);
+    bool used = false;
+
+    if (arg == "-p") {
+      options.using_pinned_memory = true;
+      used = true;
+    }
+
+    // ...
+
+    if (!used) {
+      throw std::invalid_argument("Invalid argument: " + arg);
+    }
+  }
+}
   
 CommandLineOptions parse_command_line(int argc, char *argv[]) {
   CommandLineOptions options;
-  if (argc != 5) {
+  if (argc < 5) {
     std::cerr << get_help_message(argv[0]) << std::endl;
     exit(EXIT_SUCCESS);
   }
@@ -93,6 +113,10 @@ CommandLineOptions parse_command_line(int argc, char *argv[]) {
   options.num_iterations = parse_positive_int(argv[2]);
   options.exec_mode = parse_exec_mode(argv[3]);
   options.function_name = parse_function_name(argv[4]);
+  options.using_pinned_memory = false;
+  if (argc > 5) {
+    parse_leftover_args(argc-5, argv+5, options);
+  }
 
   return options;
 }
@@ -122,13 +146,14 @@ std::string function_to_test(CommandLineOptions::FunctionName function) {
 }
 
 void print_execution_parameters(const CommandLineOptions& options) {
+  std::string pinned_text = options.using_pinned_memory ? "^pinned" : "";
   cerr << "+------------------------------------+" << endl;
   cerr << "|        Execution Parameters        |" << endl;
   cerr << "+------------------------------------+" << endl;
   cerr << "\tNumber of elements: " << options.num_elements << endl;
   cerr << "\tNumber of iterations: " << options.num_iterations << endl;
   cerr << "\tExecution mode: " << mode_to_text(options.exec_mode) << endl;
-  cerr << "\tFunction name: " << function_to_test(options.function_name) << endl;
+  cerr << "\tFunction name: " << function_to_test(options.function_name) << pinned_text << endl;
   if (options.exec_mode == CommandLineOptions::ExecutionMode::OMP) {
     cerr << "\tNumber of threads: " << omp_get_max_threads() << endl;
   }
@@ -180,7 +205,7 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, vector<f
   case CommandLineOptions::ExecutionMode::CUDA_F:
     switch (options.function_name) {
     case CommandLineOptions::FunctionName::BETAPDF:
-      y_f = betapdf_cuda(x_f, static_cast<float>(alpha), static_cast<float>(beta));
+      betapdf_cuda(x_f.data(), y_f.data(), static_cast<float>(alpha), static_cast<float>(beta), x_f.size());
       break;
     case CommandLineOptions::FunctionName::BETACDF:
       cerr << "CUDA FLOAT CDF not implemented" << endl;
@@ -195,6 +220,8 @@ main (int argc, char *argv[]) {
 
   CommandLineOptions options = parse_command_line(argc, argv);
   print_execution_parameters(options);
+
+  if (!options.using_pinned_memory) {
   
   vector<double> x(options.num_elements), y;
   vector<float> x_f, y_f;
@@ -226,5 +253,62 @@ main (int argc, char *argv[]) {
   }
   auto full_end = profile_clock_t::now();
   cerr << "Total time = " << profile_duration_t(full_end - full_start).count() << endl;
+
+  } else {
+     if (options.exec_mode == CommandLineOptions::ExecutionMode::CUDA) {
+      double* x; 
+      double* y;
+      cudaMallocHost(&x, options.num_elements * sizeof(double));
+      cudaMallocHost(&y, options.num_elements * sizeof(double));
+
+      for (int i = 0; i < options.num_elements; i++) {
+        x[i] = rand() / (double)RAND_MAX;
+      }
+
+      auto full_start = profile_clock_t::now();
+      for (int i = 1; i <= options.num_iterations; i++) {
+        double alpha = 0.1 * i;
+        double beta = 0.1 * i;
+        
+        auto start = profile_clock_t::now();
+        betapdf_cuda(x, y, alpha, beta, options.num_elements);
+        auto end = profile_clock_t::now();
+
+        cerr << "Itr[" << i << "]\t\tTime = \t\t" << profile_duration_t(end - start).count() << endl;
+      }
+      auto full_end = profile_clock_t::now();
+      cerr << "Total time = " << profile_duration_t(full_end - full_start).count() << endl;
+
+      cudaFreeHost(x);
+      cudaFreeHost(y);
+     }
+     if (options.exec_mode == CommandLineOptions::ExecutionMode::CUDA_F){
+      float* x; 
+      float* y;
+      cudaMallocHost(&x, options.num_elements * sizeof(float));
+      cudaMallocHost(&y, options.num_elements * sizeof(float));
+
+      for (int i = 0; i < options.num_elements; i++) {
+        x[i] = rand() / (float)RAND_MAX;
+      }
+
+      auto full_start = profile_clock_t::now();
+      for (int i = 1; i <= options.num_iterations; i++) {
+        float alpha = 0.1 * i;
+        float beta = 0.1 * i;
+        
+        auto start = profile_clock_t::now();
+        betapdf_cuda(x, y, alpha, beta, options.num_elements);
+        auto end = profile_clock_t::now();
+
+        cerr << "Itr[" << i << "]\t\tTime = \t\t" << profile_duration_t(end - start).count() << endl;
+      }
+      auto full_end = profile_clock_t::now();
+      cerr << "Total time = " << profile_duration_t(full_end - full_start).count() << endl;
+
+      cudaFreeHost(x);
+      cudaFreeHost(y);
+     }
+  }
   
 }

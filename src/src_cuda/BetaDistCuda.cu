@@ -180,7 +180,7 @@ __global__ void betacdf_sa_lb_kernel_f(float *x, float *y, float alpha, float be
 
 
 // CUDA kernel launch to compute the beta distribution
-void betapdf_cuda(const double *x, double *y, const double alpha, const double beta, size_t size){
+void betapdf_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size){
     
     #ifdef DEBUG
     cudaEvent_t t1, t2, t3, t4;
@@ -303,7 +303,7 @@ double* betapdf_cuda_pinned(const std::vector<double> &x, const double alpha, co
 }
 
 // CUDA kernel launch to compute the beta distribution
-std::vector<float> betapdf_cuda(const std::vector<float> &x, const float alpha, const float beta){
+void betapdf_cuda(const float *x, float *y, const float alpha, const float beta, unsigned long size){
 
     #ifdef DEBUG
     cudaEvent_t t1, t2, t3, t4;
@@ -318,11 +318,12 @@ std::vector<float> betapdf_cuda(const std::vector<float> &x, const float alpha, 
 
     // Allocate memory on the device
     float *d_x, *d_y;
-    cudaMalloc(&d_x, x.size() * sizeof(float));
-    cudaMalloc(&d_y, x.size() * sizeof(float));
+
+    cudaMalloc(&d_x, size * sizeof(float));
+    cudaMalloc(&d_y, size * sizeof(float));
 
     // Copy the data to the device
-    cudaMemcpy(d_x, x.data(), x.size() * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_x, x, size * sizeof(float), cudaMemcpyHostToDevice);
 
     #ifdef DEBUG
     cudaEventRecord(t2, 0);
@@ -332,8 +333,8 @@ std::vector<float> betapdf_cuda(const std::vector<float> &x, const float alpha, 
 
     // Launch the kernel
     int block_size = 256;
-    int n_blocks = x.size() / block_size + (x.size() % block_size == 0 ? 0 : 1);
-    betapdf_kernel_f<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, x.size());
+    int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
+    betapdf_kernel_f<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, size);
 
     #ifdef DEBUG
     cudaEventRecord(t3, 0);
@@ -342,8 +343,7 @@ std::vector<float> betapdf_cuda(const std::vector<float> &x, const float alpha, 
     #endif
 
     // Copy the result back to the host
-    std::vector<float> y(x.size());
-    cudaMemcpy(y.data(), d_y, x.size() * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(y, d_y, size * sizeof(float), cudaMemcpyDeviceToHost);
 
     // Free the memory on the device
     cudaFree(d_x);
@@ -360,7 +360,7 @@ std::vector<float> betapdf_cuda(const std::vector<float> &x, const float alpha, 
     cerr << "\tMemory transfer time = " << elapsedMemcpyCG / 1000 << " + " << elapsedMemcpyGC / 1000 << endl;
     #endif
 
-    return y;
+    return;
 }
 
 std::vector<double> betacdf_cuda(std::vector<double> &x, double alpha, double beta){
