@@ -22,8 +22,9 @@ EXECUTABLE=../bin/bench_base
 
 for i in 1000000000
 do
-    for j in cuda cuda_f
+    for j in cuda
     do
         OMP_NUM_THREADS=32 $EXECUTABLE $i 5 $j betapdf
+        OMP_NUM_THREADS=32 $EXECUTABLE $i 5 $j betacdf
     done
 done

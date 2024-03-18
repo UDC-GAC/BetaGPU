@@ -187,32 +187,21 @@ __global__ void betacdf_sa_lb_kernel_f(float *x, float *y, float alpha, float be
 std::vector<double> betapdf_cuda(const std::vector<double> &x, const double alpha, const double beta){
     
     #ifdef DEBUG
-    cudaEvent_t t0, t1, t2, t3, t4;
-    float elapsedStructs, elapsedMemcpyCG, elapsedKernel, elapsedMemcpyGC, elapsedFree, elapsedTotal;
-    cudaEventCreate(&t0);
+    cudaEvent_t t1, t2, t3, t4;
+    float elapsedMemcpyCG, elapsedKernel, elapsedMemcpyGC, elapsedTotal;
     cudaEventCreate(&t1);
     cudaEventCreate(&t2);
     cudaEventCreate(&t3);
     cudaEventCreate(&t4);
-    cudaEventCreate(&t5);
 
-    cudaEventRecord(t0, 0);
+    cudaEventRecord(t1, 0);
     #endif
-
-    // Allocate memory on the host
-    std::vector<double> y(x.size());
 
     // Allocate memory on the device
     double *d_x, *d_y;
 
     cudaMalloc(&d_x, x.size() * sizeof(double));
     cudaMalloc(&d_y, x.size() * sizeof(double));
-
-    #ifdef DEBUG
-    cudaEventRecord(t1, 0);
-    cudaEventSynchronize(t1);
-    cudaEventElapsedTime(&elapsedStructs, t0, t1);
-    #endif
 
     // Copy the data to the device
     cudaMemcpy(d_x, x.data(), x.size() * sizeof(double), cudaMemcpyHostToDevice);
@@ -235,28 +224,22 @@ std::vector<double> betapdf_cuda(const std::vector<double> &x, const double alph
     #endif
 
     // Copy the result back to the host
+    std::vector<double> y(x.size());
     cudaMemcpy(y.data(), d_y, x.size() * sizeof(double), cudaMemcpyDeviceToHost);
-
-    #ifdef DEBUG
-    cudaEventRecord(t4, 0);
-    cudaEventSynchronize(t4);
-    cudaEventElapsedTime(&elapsedMemcpyGC, t3, t4);
-    #endif
 
     // Free the memory on the device
     cudaFree(d_x);
     cudaFree(d_y);
 
     #ifdef DEBUG
-    cudaEventRecord(t5, 0);
-    cudaEventSynchronize(t5);
-    cudaEventElapsedTime(&elapsedFree, t4, t5);
-    cudaEventElapsedTime(&elapsedTotal, t0, t5);
+    cudaEventRecord(t4, 0);
+    cudaEventSynchronize(t4);
+    cudaEventElapsedTime(&elapsedMemcpyGC, t3, t4);
+    cudaEventElapsedTime(&elapsedTotal, t1, t4);
 
     cerr << "Full function time(events) = " << elapsedTotal / 1000 << endl;
     cerr << "\tKernel execution time = " << elapsedKernel / 1000 << endl;
     cerr << "\tMemory transfer time = " << elapsedMemcpyCG / 1000 << " + " << elapsedMemcpyGC / 1000 << endl;
-    cerr << "\tMemory allocation / free = " << elapsedStructs /1000 << " + " << elapsedFree / 1000 << endl;
     #endif
 
     return y;
@@ -265,33 +248,21 @@ std::vector<double> betapdf_cuda(const std::vector<double> &x, const double alph
 double* betapdf_cuda_pinned(const std::vector<double> &x, const double alpha, const double beta){
         
     #ifdef DEBUG
-    cudaEvent_t t0, t1, t2, t3, t4;
-    float elapsedStructs, elapsedMemcpyCG, elapsedKernel, elapsedMemcpyGC, elapsedFree, elapsedTotal;
-    cudaEventCreate(&t0);
+    cudaEvent_t t1, t2, t3, t4;
+    float elapsedMemcpyCG, elapsedKernel, elapsedMemcpyGC, elapsedTotal;
     cudaEventCreate(&t1);
     cudaEventCreate(&t2);
     cudaEventCreate(&t3);
     cudaEventCreate(&t4);
-    cudaEventCreate(&t5);
 
-    cudaEventRecord(t0, 0);
+    cudaEventRecord(t1, 0);
     #endif
-
-    // Allocate memory on host
-    double* y;
-    cudaMallocHost((void**)&y, x.size() * sizeof(double));
 
     // Allocate memory on the device
     double *d_x, *d_y;
 
     cudaMalloc(&d_x, x.size() * sizeof(double));
     cudaMalloc(&d_y, x.size() * sizeof(double));
-
-    #ifdef DEBUG
-    cudaEventRecord(t1, 0);
-    cudaEventSynchronize(t1);
-    cudaEventElapsedTime(&elapsedStructs, t0, t1);
-    #endif
 
     // Copy the data to the device
     cudaMemcpy(d_x, x.data(), x.size() * sizeof(double), cudaMemcpyHostToDevice);
@@ -314,28 +285,23 @@ double* betapdf_cuda_pinned(const std::vector<double> &x, const double alpha, co
     #endif
 
     // Copy the result back to the host
+    double* y;
+    cudaMallocHost((void**)&y, x.size() * sizeof(double));
     cudaMemcpy(y, d_y, x.size() * sizeof(double), cudaMemcpyDeviceToHost);
-
-    #ifdef DEBUG
-    cudaEventRecord(t4, 0);
-    cudaEventSynchronize(t4);
-    cudaEventElapsedTime(&elapsedMemcpyGC, t3, t4);
-    #endif
 
     // Free the memory on the device
     cudaFree(d_x);
     cudaFree(d_y);
 
     #ifdef DEBUG
-    cudaEventRecord(t5, 0);
-    cudaEventSynchronize(t5);
-    cudaEventElapsedTime(&elapsedFree, t4, t5);
-    cudaEventElapsedTime(&elapsedTotal, t0, t5);
+    cudaEventRecord(t4, 0);
+    cudaEventSynchronize(t4);
+    cudaEventElapsedTime(&elapsedMemcpyGC, t3, t4);
+    cudaEventElapsedTime(&elapsedTotal, t1, t4);
 
     cerr << "Full function time(events) = " << elapsedTotal / 1000 << endl;
     cerr << "\tKernel execution time = " << elapsedKernel / 1000 << endl;
     cerr << "\tMemory transfer time = " << elapsedMemcpyCG / 1000 << " + " << elapsedMemcpyGC / 1000 << endl;
-    cerr << "\tMemory allocation / free = " << elapsedStructs /1000 << " + " << elapsedFree / 1000 << endl;
     #endif
 
     return y;
