@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH -J output/exec_beta_pdf_A100
 #SBATCH -o %x-%j.out
-#SBATCH -c 64
+#SBATCH -c 32
 #SBATCH --mem-per-cpu=3G
-#SBATCH --gres=gpu:a100:2
+#SBATCH --gres=gpu:a100:1
 #SBATCH -t 55:00
 
 module load cesga/2020 cuda/12.2.0
