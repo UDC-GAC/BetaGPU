@@ -9,7 +9,7 @@ enum class GPU_Type {
     DOUBLE = sizeof(double)
 };
 
-std::vector<double> betapdf_cuda(const std::vector<double> &x, const double alpha, const double beta);
+void betapdf_cuda(const double *x, double *y, const double alpha, const double beta, size_t size);
 
 double* betapdf_cuda_pinned(const std::vector<double> &x, const double alpha, const double beta);
 

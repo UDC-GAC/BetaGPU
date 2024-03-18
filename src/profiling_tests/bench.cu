@@ -134,12 +134,9 @@ void print_execution_parameters(const CommandLineOptions& options) {
   }
 }
 
-void execute_test(const CommandLineOptions& options, vector<double>& x, vector<float>& x_f, double alpha, double beta){
-  vector<double> y;
-  vector<float> y_f;
+void execute_test(const CommandLineOptions& options, vector<double>& x, vector<float>& x_f, vector<double>& y, vector<float>& y_f, double alpha, double beta){
   switch (options.exec_mode) {
   case CommandLineOptions::ExecutionMode::SEQ:
-    y.resize(x.size());
     switch (options.function_name) {
     case CommandLineOptions::FunctionName::BETAPDF:
       for (size_t i = 0; i < x.size(); i++) {
@@ -154,7 +151,6 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, vector<f
     }
     break;
   case CommandLineOptions::ExecutionMode::OMP:
-    y.resize(x.size());
     switch (options.function_name) {
     case CommandLineOptions::FunctionName::BETAPDF:
       #pragma omp parallel for schedule(static, 64)
@@ -173,7 +169,7 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, vector<f
   case CommandLineOptions::ExecutionMode::CUDA:
     switch (options.function_name) {
     case CommandLineOptions::FunctionName::BETAPDF:
-      y = betapdf_cuda(x, alpha, beta);
+      betapdf_cuda(x.data(), y.data(), alpha, beta, x.size());
       break;
     case CommandLineOptions::FunctionName::BETACDF:
       double* y_ptr = betapdf_cuda_pinned(x, alpha, beta);
@@ -200,15 +196,22 @@ main (int argc, char *argv[]) {
   CommandLineOptions options = parse_command_line(argc, argv);
   print_execution_parameters(options);
   
-  vector<double> x(options.num_elements);
-  vector<float> x_f(options.num_elements);
+  vector<double> x(options.num_elements), y;
+  vector<float> x_f, y_f;
+  if (options.exec_mode == CommandLineOptions::ExecutionMode::CUDA_F) {
+    x_f.resize(options.num_elements);
+    y_f.resize(options.num_elements);
+  } else {
+    y.resize(options.num_elements);
+  }
   
 
   for (int i = 0; i < options.num_elements; i++) {
     x[i] = rand() / (double)RAND_MAX;
   }
 
-  std::transform(x.begin(), x.end(), x_f.begin(), [](double x) { return (float)x; });
+  if (options.exec_mode == CommandLineOptions::ExecutionMode::CUDA_F)
+    std::transform(x.begin(), x.end(), x_f.begin(), [](double x) { return (float)x; });
 
   auto full_start = profile_clock_t::now();
   for (int i = 1; i <= options.num_iterations; i++) {
@@ -216,7 +219,7 @@ main (int argc, char *argv[]) {
     double beta = 0.1 * i;
     
     auto start = profile_clock_t::now();
-    execute_test(options, x, x_f, alpha, beta);
+    execute_test(options, x, x_f, y, y_f, alpha, beta);
     auto end = profile_clock_t::now();
 
     cerr << "Itr[" << i << "]\t\tTime = \t\t" << profile_duration_t(end - start).count() << endl;
