@@ -149,14 +149,14 @@ std::string function_to_test(CommandLineOptions::FunctionName function) {
 }
 
 void print_execution_parameters(const CommandLineOptions& options) {
-  std::string pinned_text = options.using_pinned_memory ? "^pinned" : "";
+  std::string pinned_text = options.using_pinned_memory ? "^{pinned}" : "";
   cerr << "+------------------------------------+" << endl;
   cerr << "|        Execution Parameters        |" << endl;
   cerr << "+------------------------------------+" << endl;
   cerr << "\tNumber of elements: " << options.num_elements << endl;
   cerr << "\tNumber of iterations: " << options.num_iterations << endl;
-  cerr << "\tExecution mode: " << mode_to_text(options.exec_mode) << endl;
-  cerr << "\tFunction name: " << function_to_test(options.function_name) << pinned_text << endl;
+  cerr << "\tExecution mode: " << mode_to_text(options.exec_mode) << pinned_text << endl;
+  cerr << "\tFunction name: " << function_to_test(options.function_name) << endl;
   if (options.exec_mode == CommandLineOptions::ExecutionMode::OMP) {
     cerr << "\tNumber of threads: " << omp_get_max_threads() << endl;
   }
