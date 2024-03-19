@@ -19,12 +19,24 @@ def parse_execution(execution_lines: list[str]) -> dict:
     ## Parse results
     executions = [float(line.split('\t')[-1]) for line in execution_lines if line.startswith("Itr[")]
 
+    parameters["executions"] = executions
     parameters["ExecTime"] = statistics.median(executions)
 
     return parameters
 
+def append_execution(execution: dict, full_executions: dict) -> dict:
+    current_key = execution.get("Number of elements"), execution.get("Execution mode"), execution.get("Function name")
+
+    already_inserted_execution = full_executions.get(current_key, None)
+    if already_inserted_execution:
+        already_inserted_execution["executions"].extend(execution.get("executions"))
+        already_inserted_execution["ExecTime"] = statistics.median(already_inserted_execution.get("executions"))
+        full_executions[current_key] = already_inserted_execution
+    else:
+        full_executions[current_key] = execution
+
 def parse_executions(execution_lines: list[str]) -> list[dict]:
-    executions = []
+    executions = dict()
     end_idx = [i for i, item in enumerate(execution_lines) if item.startswith("Total time =")]
     current_start = 0
     while end_idx:
@@ -33,9 +45,9 @@ def parse_executions(execution_lines: list[str]) -> list[dict]:
         end_idx = end_idx[1:]
 
         execution = parse_execution(current_execution_lines)
-        executions.append(execution)
+        append_execution(execution, executions)
 
-    return executions
+    return list(executions.values())
 
 def read_input_file(filename: str) -> list[dict]:
     with open(filename, 'r') as in_file:
