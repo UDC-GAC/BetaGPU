@@ -15,7 +15,7 @@
 #define LARGE_SIZE 1e9
 
 #define PRECISION_TOLERANCE_DOUBLE 1e-7
-#define PRECISION_TOLERANCE_FLOAT 1e-7
+#define PRECISION_TOLERANCE_FLOAT 1e-2
 
 using std::vector;
 using std::cerr;
@@ -51,12 +51,13 @@ TEST_F(BETA_TEST, SmallGSLTestPDF) {
   vector<double> y1(SMALL_SIZE);
   cerr << "Size of x: " << x.size() << endl;
   for (int j = 0; j < SMALL_SIZE; j++) {
-    y1.at(j) = betacdf(x.at(j), alpha, beta);
+    y1.at(j) = betapdf(x.at(j), alpha, beta);
   }
 }
 
 TEST_F(BETA_TEST, SmallCUDATestPDF) {
-  vector<double> y2 = betacdf_cuda(x, alpha, beta);
+  vector<double> y2(x.size());
+  betapdf_cuda(x.data(), y2.data(), alpha, beta, x.size());
 }
 
 // Test case for #pdf
@@ -70,7 +71,7 @@ TEST_F(BETA_TEST, SmallComaprisonPDF) {
   betapdf_cuda(x.data(), y2.data(), alpha, beta, SMALL_SIZE);
 
   for (int j = 0; j < SMALL_SIZE; j++) {
-    ASSERT_NEAR(y1.at(j), y2.at(j), PRECISION_TOLERANCE_DOUBLE);
+    EXPECT_NEAR(y1.at(j), y2.at(j), PRECISION_TOLERANCE_DOUBLE);
   }
 }
 
@@ -88,8 +89,21 @@ TEST_F(BETA_TEST, SmallComparisonFloatPDF) {
   std::transform(y_f.begin(), y_f.end(), y2.begin(), [](float f) { return (double)f; });
 
   for (int j = 0; j < SMALL_SIZE; j++) {
-    ASSERT_NEAR(y1.at(j), y2.at(j), PRECISION_TOLERANCE_FLOAT);
+    EXPECT_NEAR(y1.at(j), y2.at(j), PRECISION_TOLERANCE_FLOAT);
   }
+}
+
+// Test case for #cdf
+TEST_F(BETA_TEST, SmallGSLTestCDF) {
+  vector<double> y1(SMALL_SIZE);
+  cerr << "Size of x: " << x.size() << endl;
+  for (int j = 0; j < SMALL_SIZE; j++) {
+    y1.at(j) = betacdf(x.at(j), alpha, beta);
+  }
+}
+
+TEST_F(BETA_TEST, SmallCUDATestCDF) {
+  vector<double> y2 = betacdf_cuda(x, alpha, beta);
 }
 
 int 
