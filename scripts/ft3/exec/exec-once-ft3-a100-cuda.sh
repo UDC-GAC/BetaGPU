@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -J output/cuda_exec_beta_pdf_A100
+#SBATCH -J output/cuda_once_exec_beta_pdf_A100
 #SBATCH -o %x-%j.out
 #SBATCH -c 32
 #SBATCH --mem-per-cpu=3G
