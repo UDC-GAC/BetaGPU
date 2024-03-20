@@ -15,6 +15,14 @@ using profile_duration_t = std::chrono::duration<double>;
 
 #endif
 
+// Define a type for the function that launches the kernel
+typedef void (*KernelLauncher)(double*, double*, double, double, int, int);
+typedef void (*KernelLauncherFloat)(float*, float*, float, float, int, int);
+
+
+/* --------------- Beta PDF Kernels --------------- */
+
+
 __global__ void betapdf_kernel(double *x, double *y, double alpha, double beta, size_t size){
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size){
@@ -35,6 +43,10 @@ __global__ void betapdf_kernel_h(float *x, float *y, float alpha, float beta, si
         y[idx] = powf(x[idx], alpha - 1) * powf(1 - x[idx], beta - 1) * expf(lgammaf(alpha + beta) - lgammaf(alpha) - lgammaf(beta));
     }
 }
+
+
+/* --------------- Beta CDF Kernels --------------- */
+
 
 // TODO: Implement the beta distribution CDF using the continued fraction
 __device__ double cuda_beta_cont_frac(double alpha, double beta, double x, double epsabs){
@@ -177,11 +189,24 @@ __global__ void betacdf_sa_lb_kernel_f(float *x, float *y, float alpha, float be
     }
 }
 
+__global__ void betacdf_prefix_only_kernel(double *x, double *y, double alpha, double beta, size_t size){
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    double a = alpha;
+    double b = beta;
+    if (idx < size){
+        double my_x = x[idx];
+
+        double ln_beta = lgamma(a + b) - lgamma(a) - lgamma(b);
+        double ln_pre = -ln_beta + a * log(my_x) + b * log1p(-my_x);
+        double prefactor = exp(ln_pre);
+
+        y[idx] = prefactor;
+    }
+}
 
 
-// Define a type for the function that launches the kernel
-typedef void (*KernelLauncher)(double*, double*, double, double, int, int);
-typedef void (*KernelLauncherFloat)(float*, float*, float, float, int, int);
+/* --------------- Kernel launchers --------------- */
+
 
 inline void launch_betapdf_kernel(double *d_x, double *d_y, double alpha, double beta, int size, int block_size) {
     int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
@@ -193,11 +218,14 @@ inline void launch_betapdf_kernel_f(float *d_x, float *d_y, float alpha, float b
     betapdf_kernel_f<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, size);
 }
 
-inline void launch_betacdf_kernel(double *d_x, double *d_y, double alpha, double beta, int size, int block_size) {
+inline void launch_betacdf_prefactor_only_kernel(double *d_x, double *d_y, double alpha, double beta, int size, int block_size) {
     int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
-    n_blocks *= 1; // Just to suppress tmp warning
-    //TODO: Implement smthing with the kernel
+    betacdf_prefix_only_kernel<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, size);
 }
+
+
+/* --------------- Auxiliar encapsulation functions --------------- */
+
 
 void beta_array_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size, KernelLauncher kernel_launcher){
     
@@ -317,6 +345,85 @@ void beta_array_cuda_float(const float *x, float *y, const float alpha, const fl
     return;
 }
 
+
+/* ----- Auxiliar tmp functions ----- */
+
+
+// Look https://github.com/ampl/gsl/blob/master/cdf/beta_inc.c#L26
+double tmp_beta_cont_frac (const double a, const double b, const double x,
+                const double epsabs) {
+  const unsigned int max_iter = 512;    /* control iterations      */
+  const double cutoff = 2.0 * CUDA_DBL_MIN;      /* control the zero cutoff */
+  unsigned int iter_count = 0;
+  double cf;
+
+  /* standard initialization for continued fraction */
+  double num_term = 1.0;
+  double den_term = 1.0 - (a + b) * x / (a + 1.0);
+
+  if (fabs (den_term) < cutoff)
+    den_term = nan("");
+
+  den_term = 1.0 / den_term;
+  cf = den_term;
+
+  while (iter_count < max_iter)
+    {
+      const int k = iter_count + 1;
+      double coeff = k * (b - k) * x / (((a - 1.0) + 2 * k) * (a + 2 * k));
+      double delta_frac;
+
+      /* first step */
+      den_term = 1.0 + coeff * den_term;
+      num_term = 1.0 + coeff / num_term;
+
+      if (fabs (den_term) < cutoff)
+        den_term = nan("");
+
+      if (fabs (num_term) < cutoff)
+        num_term = nan("");
+
+      den_term = 1.0 / den_term;
+
+      delta_frac = den_term * num_term;
+      cf *= delta_frac;
+
+      coeff = -(a + k) * (a + b + k) * x / ((a + 2 * k) * (a + 2 * k + 1.0));
+
+      /* second step */
+      den_term = 1.0 + coeff * den_term;
+      num_term = 1.0 + coeff / num_term;
+
+      if (fabs (den_term) < cutoff)
+        den_term = nan("");
+
+      if (fabs (num_term) < cutoff)
+        num_term = nan("");
+
+      den_term = 1.0 / den_term;
+
+      delta_frac = den_term * num_term;
+      cf *= delta_frac;
+
+      if (fabs (delta_frac - 1.0) < 2.0 * CUDA_DBL_EPSILON)
+        break;
+
+      if (cf * fabs (delta_frac - 1.0) < epsabs)
+        break;
+
+      ++iter_count;
+    }
+
+  if (iter_count >= max_iter)
+    return nan("");
+
+  return cf;
+}
+
+
+/* --------------- Export fuctions --------------- */
+
+
 // CUDA kernel launch to compute the beta distribution
 void betapdf_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size){
     
@@ -335,7 +442,27 @@ void betapdf_cuda(const float *x, float *y, const float alpha, const float beta,
 
 void betacdf_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size){
     
-    beta_array_cuda(x, y, alpha, beta, size, launch_betacdf_kernel);
+    beta_array_cuda(x, y, alpha, beta, size, launch_betacdf_prefactor_only_kernel);
+
+    for (unsigned long i = 0; i < size; i++)
+    {
+        if (x[i] < (alpha + 1.0) / (alpha + beta + 2.0)) {
+            /* Apply continued fraction directly. */
+            double epsabs = 0.;
+
+            double cf = tmp_beta_cont_frac(alpha, beta, x[i], epsabs);
+
+            y[i] = y[i] * cf / alpha;
+        } else {
+            /* Apply continued fraction after hypergeometric transformation. */
+            double epsabs =
+                fabs(1. / (y[i] / beta)) * CUDA_DBL_EPSILON;
+            double cf = tmp_beta_cont_frac(beta, alpha, 1.0 - x[i], epsabs);
+            double term = y[i] * cf / beta;
+
+            y[i] = 1 - term;
+        }
+    }
 
     return;
 }
