@@ -1,6 +1,9 @@
 #include "BetaDistCuda.hpp"
 
 #include <cuda_fp16.h>
+#include <gsl/gsl_sf_gamma.h>
+
+#include <omp.h>
 
 #ifdef DEBUG
 
@@ -189,14 +192,13 @@ __global__ void betacdf_sa_lb_kernel_f(float *x, float *y, float alpha, float be
     }
 }
 
-__global__ void betacdf_prefix_only_kernel(double *x, double *y, double alpha, double beta, size_t size){
+__global__ void betacdf_prefix_only_kernel(double *x, double *y, double alpha, double beta, double ln_beta, size_t size){
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     double a = alpha;
     double b = beta;
     if (idx < size){
         double my_x = x[idx];
 
-        double ln_beta = lgamma(a + b) - lgamma(a) - lgamma(b);
         double ln_pre = -ln_beta + a * log(my_x) + b * log1p(-my_x);
         double prefactor = exp(ln_pre);
 
@@ -220,7 +222,8 @@ inline void launch_betapdf_kernel_f(float *d_x, float *d_y, float alpha, float b
 
 inline void launch_betacdf_prefactor_only_kernel(double *d_x, double *d_y, double alpha, double beta, int size, int block_size) {
     int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
-    betacdf_prefix_only_kernel<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, size);
+    double ln_beta = gsl_sf_lnbeta(alpha, beta);
+    betacdf_prefix_only_kernel<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, ln_beta, size);
 }
 
 
@@ -444,6 +447,7 @@ void betacdf_cuda(const double *x, double *y, const double alpha, const double b
     
     beta_array_cuda(x, y, alpha, beta, size, launch_betacdf_prefactor_only_kernel);
 
+    #pragma omp parallel for schedule(static, 64)
     for (unsigned long i = 0; i < size; i++)
     {
         if (x[i] < (alpha + 1.0) / (alpha + beta + 2.0)) {

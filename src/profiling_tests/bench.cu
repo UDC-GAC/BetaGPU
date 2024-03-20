@@ -200,7 +200,7 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, vector<f
       betapdf_cuda(x.data(), y.data(), alpha, beta, x.size());
       break;
     case CommandLineOptions::FunctionName::BETACDF:
-      cerr << "CUDA DOUBLE CDF not implemented" << endl;
+      betacdf_cuda(x.data(), y.data(), alpha, beta, x.size());
       break;
     }
     break;

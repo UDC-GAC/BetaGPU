@@ -61,6 +61,7 @@ target_link_libraries(beta_gsl PRIVATE GSL::gsl)
 
 add_library(beta_cuda STATIC ${CUDA_LIB_FILES} )
 target_compile_features(beta_cuda PUBLIC cxx_std_17)
+target_link_libraries(beta_cuda PRIVATE GSL::gsl OpenMP::OpenMP_CXX)
 set_target_properties( beta_cuda
                        PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 set_target_properties(beta_cuda PROPERTIES CUDA_ARCHITECTURES "80")

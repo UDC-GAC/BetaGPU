@@ -16,6 +16,7 @@
 
 #define PRECISION_TOLERANCE_DOUBLE 1e-7
 #define PRECISION_TOLERANCE_FLOAT 1e-2
+#define PRECISION_TOLERANCE_CLOSE_EQ 1e-15
 
 using std::vector;
 using std::cerr;
@@ -37,8 +38,8 @@ protected:
       x[i] = rand() / (double)RAND_MAX;
     }
 
-    alpha = 0.1;
-    beta = 0.1;
+    alpha = .1;
+    beta = .1;
   }
 
 const unsigned int seed = time(NULL);
@@ -105,6 +106,21 @@ TEST_F(BETA_TEST, SmallGSLTestCDF) {
 TEST_F(BETA_TEST, SmallCUDATestCDF) {
   vector<double> y2(x.size());
   betacdf_cuda(x.data(), y2.data(), alpha, beta, x.size());
+}
+
+// Test case for #cdf
+TEST_F(BETA_TEST, SmallComaprisonCDF) {
+
+  vector<double> y1(SMALL_SIZE), y2(SMALL_SIZE);
+
+  for (int j = 0; j < SMALL_SIZE; j++) {
+    y1.at(j) = betacdf(x.at(j), alpha, beta);
+  }
+  betacdf_cuda(x.data(), y2.data(), alpha, beta, SMALL_SIZE);
+
+  for (int j = 0; j < SMALL_SIZE; j++) {
+    EXPECT_NEAR(y1.at(j), y2.at(j), PRECISION_TOLERANCE_CLOSE_EQ);
+  }
 }
 
 int 
