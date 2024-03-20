@@ -179,8 +179,27 @@ __global__ void betacdf_sa_lb_kernel_f(float *x, float *y, float alpha, float be
 
 
 
-// CUDA kernel launch to compute the beta distribution
-void betapdf_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size){
+// Define a type for the function that launches the kernel
+typedef void (*KernelLauncher)(double*, double*, double, double, int, int);
+typedef void (*KernelLauncherFloat)(float*, float*, float, float, int, int);
+
+inline void launch_betapdf_kernel(double *d_x, double *d_y, double alpha, double beta, int size, int block_size) {
+    int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
+    betapdf_kernel<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, size);
+}
+
+inline void launch_betapdf_kernel_f(float *d_x, float *d_y, float alpha, float beta, int size, int block_size) {
+    int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
+    betapdf_kernel_f<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, size);
+}
+
+inline void launch_betacdf_kernel(double *d_x, double *d_y, double alpha, double beta, int size, int block_size) {
+    int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
+    n_blocks *= 1; // Just to suppress tmp warning
+    //TODO: Implement smthing with the kernel
+}
+
+void beta_array_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size, KernelLauncher kernel_launcher){
     
     #ifdef DEBUG
     cudaEvent_t t1, t2, t3, t4;
@@ -210,8 +229,7 @@ void betapdf_cuda(const double *x, double *y, const double alpha, const double b
 
     // Launch the kernel
     int block_size = 256;
-    int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
-    betapdf_kernel<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, size);
+    kernel_launcher(d_x, d_y, alpha, beta, size, block_size);
 
     #ifdef DEBUG
     cudaEventRecord(t3, 0);
@@ -240,9 +258,8 @@ void betapdf_cuda(const double *x, double *y, const double alpha, const double b
     return;
 }
 
-// CUDA kernel launch to compute the beta distribution
-void betapdf_cuda(const float *x, float *y, const float alpha, const float beta, unsigned long size){
-
+void beta_array_cuda_float(const float *x, float *y, const float alpha, const float beta, unsigned long size, KernelLauncherFloat kernel_launcher){
+    
     #ifdef DEBUG
     cudaEvent_t t1, t2, t3, t4;
     float elapsedMemcpyCG, elapsedKernel, elapsedMemcpyGC, elapsedTotal;
@@ -271,8 +288,7 @@ void betapdf_cuda(const float *x, float *y, const float alpha, const float beta,
 
     // Launch the kernel
     int block_size = 256;
-    int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
-    betapdf_kernel_f<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, size);
+    kernel_launcher(d_x, d_y, alpha, beta, size, block_size);
 
     #ifdef DEBUG
     cudaEventRecord(t3, 0);
@@ -301,62 +317,25 @@ void betapdf_cuda(const float *x, float *y, const float alpha, const float beta,
     return;
 }
 
+// CUDA kernel launch to compute the beta distribution
+void betapdf_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size){
+    
+    beta_array_cuda(x, y, alpha, beta, size, launch_betapdf_kernel);
+
+    return;
+}
+
+// CUDA kernel launch to compute the beta distribution
+void betapdf_cuda(const float *x, float *y, const float alpha, const float beta, unsigned long size){
+
+    beta_array_cuda_float(x, y, alpha, beta, size, launch_betapdf_kernel_f);
+
+    return;
+}
+
 void betacdf_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size){
     
-    #ifdef DEBUG
-    cudaEvent_t t1, t2, t3, t4;
-    float elapsedMemcpyCG, elapsedKernel, elapsedMemcpyGC, elapsedTotal;
-    cudaEventCreate(&t1);
-    cudaEventCreate(&t2);
-    cudaEventCreate(&t3);
-    cudaEventCreate(&t4);
-
-    cudaEventRecord(t1, 0);
-    #endif
-
-    // Allocate memory on the device
-    double *d_x, *d_y;
-
-    cudaMalloc(&d_x, size * sizeof(double));
-    cudaMalloc(&d_y, size * sizeof(double));
-
-    // Copy the data to the device
-    cudaMemcpy(d_x, x, size * sizeof(double), cudaMemcpyHostToDevice);
-
-    #ifdef DEBUG
-    cudaEventRecord(t2, 0);
-    cudaEventSynchronize(t2);
-    cudaEventElapsedTime(&elapsedMemcpyCG, t1, t2);
-    #endif
-
-    // Launch the kernel
-    int block_size = 256;
-    int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
-    //betacdf_kernel<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, size);
-
-    #ifdef DEBUG
-    cudaEventRecord(t3, 0);
-    cudaEventSynchronize(t3);
-    cudaEventElapsedTime(&elapsedKernel, t2, t3);
-    #endif
-
-    // Copy the result back to the host
-    cudaMemcpy(y, d_y, size * sizeof(double), cudaMemcpyDeviceToHost);
-
-    // Free the memory on the device
-    cudaFree(d_x);
-    cudaFree(d_y);
-
-    #ifdef DEBUG
-    cudaEventRecord(t4, 0);
-    cudaEventSynchronize(t4);
-    cudaEventElapsedTime(&elapsedMemcpyGC, t3, t4);
-    cudaEventElapsedTime(&elapsedTotal, t1, t4);
-
-    cerr << "Full function time(events) = " << elapsedTotal / 1000 << endl;
-    cerr << "\tKernel execution time = " << elapsedKernel / 1000 << endl;
-    cerr << "\tMemory transfer time = " << elapsedMemcpyCG / 1000 << " + " << elapsedMemcpyGC / 1000 << endl;
-    #endif
+    beta_array_cuda(x, y, alpha, beta, size, launch_betacdf_kernel);
 
     return;
 }

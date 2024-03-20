@@ -165,7 +165,7 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, double a
       betapdf_cuda(x.data(), y.data(), alpha, beta, x.size());
       break;
     case CommandLineOptions::FunctionName::BETACDF:
-      y = betacdf_cuda(x, alpha, beta);
+      betacdf_cuda(x.data(), y.data(), alpha, beta, x.size());
       break;
     }
     break;

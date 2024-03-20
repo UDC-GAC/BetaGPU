@@ -103,7 +103,8 @@ TEST_F(BETA_TEST, SmallGSLTestCDF) {
 }
 
 TEST_F(BETA_TEST, SmallCUDATestCDF) {
-  vector<double> y2 = betacdf_cuda(x, alpha, beta);
+  vector<double> y2(x.size());
+  betacdf_cuda(x.data(), y2.data(), alpha, beta, x.size());
 }
 
 int 
