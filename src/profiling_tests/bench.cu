@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
+#include <thread>
 #include <vector>
 
 #include <omp.h>
@@ -211,6 +212,7 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, vector<f
       break;
     case CommandLineOptions::FunctionName::BETACDF:
       cerr << "CUDA FLOAT CDF not implemented" << endl;
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
       break;
     }
     break;
@@ -273,7 +275,10 @@ main (int argc, char *argv[]) {
         double beta = 0.1 * i;
         
         auto start = profile_clock_t::now();
-        betapdf_cuda(x, y, alpha, beta, options.num_elements);
+        if (options.function_name == CommandLineOptions::FunctionName::BETAPDF)
+          betapdf_cuda(x, y, alpha, beta, options.num_elements);
+        if (options.function_name == CommandLineOptions::FunctionName::BETACDF)
+          betacdf_cuda(x, y, alpha, beta, options.num_elements);
         auto end = profile_clock_t::now();
 
         cerr << "Itr[" << i << "]\t\tTime = \t\t" << profile_duration_t(end - start).count() << endl;
@@ -300,7 +305,12 @@ main (int argc, char *argv[]) {
         float beta = 0.1 * i;
         
         auto start = profile_clock_t::now();
-        betapdf_cuda(x, y, alpha, beta, options.num_elements);
+        if (options.function_name == CommandLineOptions::FunctionName::BETAPDF)
+          betapdf_cuda(x, y, alpha, beta, options.num_elements);
+        if (options.function_name == CommandLineOptions::FunctionName::BETACDF){
+          cerr << "CUDA FLOAT CDF not implemented" << endl;
+          std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        }
         auto end = profile_clock_t::now();
 
         cerr << "Itr[" << i << "]\t\tTime = \t\t" << profile_duration_t(end - start).count() << endl;
