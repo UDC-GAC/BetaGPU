@@ -12,10 +12,13 @@ double betapdf(double x, double alpha, double beta) {
   return gsl_ran_beta_pdf(x, alpha, beta);
 }
 
+// Cumulative distribution function
+// Look https://github.com/ampl/gsl/blob/master/cdf/beta.c#L29
 double betacdf(double x, double alpha, double beta) {
   return gsl_cdf_beta_P(x, alpha, beta);
 }
 
+// Look https://github.com/ampl/gsl/blob/master/cdf/beta_inc.c#L26
 double other_beta_cont_frac (const double a, const double b, const double x,
                 const double epsabs)
 {
@@ -87,6 +90,7 @@ double other_beta_cont_frac (const double a, const double b, const double x,
   return cf;
 }
 
+// Look https://github.com/ampl/gsl/blob/master/cdf/beta_inc.c#L108
 double other_beta_inc(double x, double a, double b, double A, double Y)
 {
   if (x == 0.0)
