@@ -148,6 +148,32 @@ if(APPLE)
                BUILD_RPATH ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
 endif()
 
+#
+#
+# benchmark_cont_frac
+#
+#
+
+add_executable(benchmark_cont_frac src/profiling_tests/benchmark_cont_frac.cpp)
+set_target_properties( benchmark_cont_frac
+                       PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+set_target_properties(benchmark_cont_frac PROPERTIES CUDA_ARCHITECTURES "80")
+target_link_libraries(benchmark_cont_frac PRIVATE beta_cuda beta_gsl OpenMP::OpenMP_CXX)
+
+if(APPLE)
+  # We need to add the path to the driver (libcuda.dylib) as an rpath, 
+  # so that the static cuda runtime can find it at runtime.
+  set_property(TARGET benchmark_cont_frac 
+               PROPERTY
+               BUILD_RPATH ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
+endif()
+
+#
+#
+# benchmark_base_CUDA
+#
+#
+
 add_executable(bench_base src/profiling_tests/bench.cu src/src_cuda/BetaDistCuda.cu)
 set_target_properties( bench_base
                        PROPERTIES CUDA_SEPARABLE_COMPILATION ON)

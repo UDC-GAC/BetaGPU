@@ -1,0 +1,22 @@
+if (!exists("in_filename")) in_filename='output/data/cf_iters.dat'
+if (!exists("out_filename")) out_filename='output/graphs/CF_iter_count.pdf'
+if (!exists("alpha")) alpha='?'
+if (!exists("beta")) beta='?'
+
+set terminal pdf enhanced
+set output out_filename
+
+stats in_filename using 2 nooutput
+max_iters = STATS_max
+
+set style fill solid noborder
+set yrange [0:max_iters * 1.15]
+set xrange [0:1.0001]
+set xtics (0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1)
+set key left top
+set key top left
+set xlabel "X value" font ",16"
+set ylabel "#Iterations" font ",16"
+set tics font ", 16"
+set title "CF Iterations with Alpha=".alpha." and Beta=".beta font "Helvetica Bold, 22"
+plot in_filename using 1:2 with filledcurve title col lt rgb "#cc8888"
