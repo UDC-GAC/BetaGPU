@@ -51,86 +51,84 @@ __global__ void betapdf_kernel_h(float *x, float *y, float alpha, float beta, si
 /* --------------- Beta CDF Kernels --------------- */
 
 
-// TODO: Implement the beta distribution CDF using the continued fraction
-__device__ double cuda_beta_cont_frac(double alpha, double beta, double x, double epsabs){
-    const unsigned int max_iter = 512;
-    const double cutoff = 2. * CUDA_DBL_MIN;
-    double cf;
-    double delta_frac;
+// Look https://github.com/ampl/gsl/blob/master/cdf/beta_inc.c#L26
+__device__ double cuda_beta_cont_frac (const double a, const double b, const double x,
+                const double epsabs) {
+  const unsigned int max_iter = 512;    /* control iterations      */
+  const double cutoff = 2.0 * CUDA_DBL_MIN;      /* control the zero cutoff */
+  unsigned int iter_count = 0;
+  double cf;
 
-    double num_term = 1.;
-    double denom_term = 1. - (alpha + beta) * x / (alpha + 1.);
+  /* standard initialization for continued fraction */
+  double num_term = 1.0;
+  double den_term = 1.0 - (a + b) * x / (a + 1.0);
 
-    if (fabs(denom_term) < cutoff)
-        denom_term = nan("");
+  if (fabs (den_term) < cutoff)
+    den_term = nan("");
 
-    denom_term = 1. / denom_term;
-    cf = denom_term;
+  den_term = 1.0 / den_term;
+  cf = den_term;
 
-    for (unsigned int iter = 0; iter < max_iter; iter++){
-        
-        const unsigned int k = iter + 1;
-        double coeff = k * (beta - k) * x / (((alpha - 1.) + 2 * k) * (alpha + 2 * k));
-        
+  while (iter_count < max_iter)
+    {
+      const int k = iter_count + 1;
+      double coeff = k * (b - k) * x / (((a - 1.0) + 2 * k) * (a + 2 * k));
+      double delta_frac;
 
-        /* first step */
-        denom_term = 1. + coeff * denom_term;
-        num_term = 1. + coeff / num_term;
+      /* first step */
+      den_term = 1.0 + coeff * den_term;
+      num_term = 1.0 + coeff / num_term;
 
-        if (fabs(denom_term) < cutoff)
-            denom_term = nan("");
+      if (fabs (den_term) < cutoff)
+        den_term = nan("");
 
-        if (fabs(num_term) < cutoff)
-            num_term = nan("");
+      if (fabs (num_term) < cutoff)
+        num_term = nan("");
 
-        denom_term = 1. / denom_term;
+      den_term = 1.0 / den_term;
 
-        delta_frac = denom_term * num_term;
-        cf *= delta_frac;
+      delta_frac = den_term * num_term;
+      cf *= delta_frac;
 
-        coeff = -(alpha + k) * (alpha + beta + k) * x / ((alpha + 2 * k) * (alpha + 2 * k + 1.));
-    
-        /* second step */
-        denom_term = 1. + coeff * denom_term;
-        num_term = 1. + coeff / num_term;
+      coeff = -(a + k) * (a + b + k) * x / ((a + 2 * k) * (a + 2 * k + 1.0));
 
-        if (fabs(denom_term) < cutoff)
-            denom_term = nan("");
+      /* second step */
+      den_term = 1.0 + coeff * den_term;
+      num_term = 1.0 + coeff / num_term;
 
-        if (fabs(num_term) < cutoff)
-            num_term = nan("");
+      if (fabs (den_term) < cutoff)
+        den_term = nan("");
 
-        denom_term = 1. / denom_term;
+      if (fabs (num_term) < cutoff)
+        num_term = nan("");
 
-        delta_frac = denom_term * num_term;
-        cf *= delta_frac;
+      den_term = 1.0 / den_term;
 
-        /* last iteration checks */
-        //if (fabs(delta_frac - 1.) < 2. * CUDA_DBL_EPSILON)
-        //    break;
+      delta_frac = den_term * num_term;
+      cf *= delta_frac;
 
-        //if (cf * fabs(delta_frac - 1.) < epsabs)
-        //    break;
-    
+      if (fabs (delta_frac - 1.0) < 2.0 * CUDA_DBL_EPSILON)
+        break;
+
+      if (cf * fabs (delta_frac - 1.0) < epsabs)
+        break;
+
+      ++iter_count;
     }
 
-    // These checks are originally done within the loop
-    // If this logic within the loop is modified, this should be modified as well
-    //if (fabs(delta_frac - 1.) < 2. * CUDA_DBL_EPSILON || cf * fabs(delta_frac - 1.) < epsabs)
-    //    return nan("");
-        
-    return cf;
+  if (iter_count >= max_iter)
+    return nan("");
 
+  return cf;
 }
 
-__global__ void betacdf_dirCF_kernel(double *x, double *y, double alpha, double beta, size_t size){
+__global__ void betacdf_dirCF_kernel(double *x, double *y, double alpha, double beta, double ln_beta, size_t size){
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     double a = alpha;
     double b = beta;
     if (idx < size){
         double my_x = x[idx];
 
-        double ln_beta = lgamma(a + b) - lgamma(a) - lgamma(b);
         double ln_pre = -ln_beta + a * log(my_x) + b * log1p(-my_x);
         double prefactor = exp(ln_pre);
 
@@ -142,14 +140,13 @@ __global__ void betacdf_dirCF_kernel(double *x, double *y, double alpha, double 
     }
 }
 
-__global__ void betacdf_hypergeoCF_kernel(double *x, double *y, double alpha, double beta, size_t size){
+__global__ void betacdf_hypergeoCF_kernel(double *x, double *y, double alpha, double beta, double ln_beta, size_t size){
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     double a = alpha;
     double b = beta;
     if (idx < size){
         double my_x = x[idx];
 
-        double ln_beta = lgamma(a + b) - lgamma(a) - lgamma(b);
         double ln_pre = -ln_beta + a * log(my_x) + b * log1p(-my_x);
         double prefactor = exp(ln_pre);
 
@@ -159,6 +156,30 @@ __global__ void betacdf_hypergeoCF_kernel(double *x, double *y, double alpha, do
         double term = prefactor * cf / b;
 
         y[idx] = 1. - term;
+    }
+}
+
+__global__ void betacdf_CF_kernel(double *x, double *y, double alpha, double beta, double ln_beta, size_t size){
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    double a = alpha;
+    double b = beta;
+    double limit = (alpha + 1.0) / (alpha + beta + 2.0);
+    if (idx < size){
+        double my_x = x[idx];
+
+        double ln_pre = -ln_beta + a * log(my_x) + b * log1p(-my_x);
+        double prefactor = exp(ln_pre);
+
+        double epsabs = my_x < limit ? 0. : 1. / (prefactor / b) * CUDA_DBL_EPSILON; // Now every value can be one of two cases
+        double cf_a = my_x < limit ? a : b;
+        double cf_b = my_x < limit ? b : a;
+        double cf_x = my_x < limit ? my_x : 1. - my_x;
+        double cf = cuda_beta_cont_frac(cf_a, cf_b, cf_x, epsabs);
+
+        double term = prefactor * cf / cf_a;
+
+        double my_y = my_x < limit ? term : 1. - term;
+        y[idx] =  my_y; // Now every value can be one of two cases
     }
 }
 
@@ -224,6 +245,12 @@ inline void launch_betacdf_prefactor_only_kernel(double *d_x, double *d_y, doubl
     int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
     double ln_beta = gsl_sf_lnbeta(alpha, beta);
     betacdf_prefix_only_kernel<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, ln_beta, size);
+}
+
+inline void launch_betacdf_withCF_kernel(double *d_x, double *d_y, double alpha, double beta, int size, int block_size) {
+    int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
+    double ln_beta = gsl_sf_lnbeta(alpha, beta);
+    betacdf_CF_kernel<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, ln_beta, size);
 }
 
 
@@ -443,7 +470,15 @@ void betapdf_cuda(const float *x, float *y, const float alpha, const float beta,
     return;
 }
 
+// CUDA kernel launch to compute the beta distribution
 void betacdf_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size){
+
+    beta_array_cuda(x, y, alpha, beta, size, launch_betacdf_withCF_kernel);
+
+    return;
+}
+
+void betacdf_cuda_GPU_CPU(const double *x, double *y, const double alpha, const double beta, unsigned long size){
     
     beta_array_cuda(x, y, alpha, beta, size, launch_betacdf_prefactor_only_kernel);
 

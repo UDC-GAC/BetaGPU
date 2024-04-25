@@ -13,4 +13,6 @@ void betapdf_cuda(const double *x, double *y, const double alpha, const double b
 
 void betapdf_cuda(const float *x, float *y, const float alpha, const float beta, unsigned long size);
 
+void betacdf_cuda_GPU_CPU(const double *x, double *y, const double alpha, const double beta, unsigned long size);
+
 void betacdf_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size);
