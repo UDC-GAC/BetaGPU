@@ -211,8 +211,7 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, vector<f
       betapdf_cuda(x_f.data(), y_f.data(), static_cast<float>(alpha), static_cast<float>(beta), x_f.size());
       break;
     case CommandLineOptions::FunctionName::BETACDF:
-      cerr << "CUDA FLOAT CDF not implemented" << endl;
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      betacdf_cuda_GPU_CPU(x.data(), y.data(), alpha, beta, x.size());
       break;
     }
     break;
