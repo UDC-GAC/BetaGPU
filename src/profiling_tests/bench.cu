@@ -226,36 +226,33 @@ main (int argc, char *argv[]) {
 
   if (!options.using_pinned_memory) {
   
-  vector<double> x(options.num_elements), y;
-  vector<float> x_f, y_f;
-  if (options.exec_mode == CommandLineOptions::ExecutionMode::CUDA_F) {
-    x_f.resize(options.num_elements);
-    y_f.resize(options.num_elements);
-  } else {
-    y.resize(options.num_elements);
-  }
-  
+    vector<double> x(options.num_elements), y(options.num_elements);
+    vector<float> x_f, y_f;
+    if (options.exec_mode == CommandLineOptions::ExecutionMode::CUDA_F) {
+      x_f.resize(options.num_elements);
+      y_f.resize(options.num_elements);
+    }
 
-  for (int i = 0; i < options.num_elements; i++) {
-    x[i] = rand() / (double)RAND_MAX;
-  }
+    for (int i = 0; i < options.num_elements; i++) {
+      x[i] = rand() / (double)RAND_MAX;
+    }
 
-  if (options.exec_mode == CommandLineOptions::ExecutionMode::CUDA_F)
-    std::transform(x.begin(), x.end(), x_f.begin(), [](double x) { return (float)x; });
+    if (options.exec_mode == CommandLineOptions::ExecutionMode::CUDA_F)
+      std::transform(x.begin(), x.end(), x_f.begin(), [](double x) { return (float)x; });
 
-  auto full_start = profile_clock_t::now();
-  for (int i = 1; i <= options.num_iterations; i++) {
-    double alpha = 0.1 * i;
-    double beta = 0.1 * i;
-    
-    auto start = profile_clock_t::now();
-    execute_test(options, x, x_f, y, y_f, alpha, beta);
-    auto end = profile_clock_t::now();
+    auto full_start = profile_clock_t::now();
+    for (int i = 1; i <= options.num_iterations; i++) {
+      double alpha = 9.34 * i;
+      double beta = 11.34 * i;
+      
+      auto start = profile_clock_t::now();
+      execute_test(options, x, x_f, y, y_f, alpha, beta);
+      auto end = profile_clock_t::now();
 
-    cerr << "Itr[" << i << "]\t\tTime = \t\t" << profile_duration_t(end - start).count() << endl;
-  }
-  auto full_end = profile_clock_t::now();
-  cerr << "Total time = " << profile_duration_t(full_end - full_start).count() << endl;
+      cerr << "Itr[" << i << "]\t\tTime = \t\t" << profile_duration_t(end - start).count() << endl;
+    }
+    auto full_end = profile_clock_t::now();
+    cerr << "Total time = " << profile_duration_t(full_end - full_start).count() << endl;
 
   } else {
      if (options.exec_mode == CommandLineOptions::ExecutionMode::CUDA) {
@@ -270,8 +267,8 @@ main (int argc, char *argv[]) {
 
       auto full_start = profile_clock_t::now();
       for (int i = 1; i <= options.num_iterations; i++) {
-        double alpha = 0.1 * i;
-        double beta = 0.1 * i;
+        double alpha = 9.34 * i;
+        double beta = 11.34 * i;
         
         auto start = profile_clock_t::now();
         if (options.function_name == CommandLineOptions::FunctionName::BETAPDF)
@@ -300,8 +297,8 @@ main (int argc, char *argv[]) {
 
       auto full_start = profile_clock_t::now();
       for (int i = 1; i <= options.num_iterations; i++) {
-        float alpha = 0.1 * i;
-        float beta = 0.1 * i;
+        float alpha = 5000 * i;
+        float beta = 5000 * i;
         
         auto start = profile_clock_t::now();
         if (options.function_name == CommandLineOptions::FunctionName::BETAPDF)

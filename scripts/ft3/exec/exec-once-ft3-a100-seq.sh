@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -J output/seq_once_beta_pdf_A100
+#SBATCH -J output/seq_once_beta_cdf_A100
 #SBATCH -o %x-%j.out
 #SBATCH -c 32
 #SBATCH --mem-per-cpu=3G
@@ -26,7 +26,7 @@ do
     do
         for n in {1..5}
         do
-            OMP_NUM_THREADS=32 $EXECUTABLE $i 1 $j betapdf
+            OMP_NUM_THREADS=32 $EXECUTABLE $i 1 $j betacdf
         done
     done
 done

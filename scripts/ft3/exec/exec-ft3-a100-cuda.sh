@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -J output/cuda_exec_beta_pdf_A100
+#SBATCH -J output/cuda_exec_beta_cdf_A100
 #SBATCH -o %x-%j.out
 #SBATCH -c 32
 #SBATCH --mem-per-cpu=3G
@@ -24,7 +24,7 @@ for i in 10000000 100000000 1000000000
 do
     for j in cuda cuda_f omp
     do
-        for f in betapdf
+        for f in betacdf
         do
             OMP_NUM_THREADS=32 $EXECUTABLE $i 7 $j $f
             OMP_NUM_THREADS=32 $EXECUTABLE $i 7 $j $f -p

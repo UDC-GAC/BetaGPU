@@ -64,7 +64,7 @@ target_compile_features(beta_cuda PUBLIC cxx_std_17)
 target_link_libraries(beta_cuda PRIVATE GSL::gsl OpenMP::OpenMP_CXX)
 set_target_properties( beta_cuda
                        PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-set_target_properties(beta_cuda PROPERTIES CUDA_ARCHITECTURES "80")
+set_target_properties(beta_cuda PROPERTIES CUDA_ARCHITECTURES "75;80;86")
 
  
 # We need to explicitly state that we need all CUDA files in the 
@@ -84,7 +84,7 @@ add_executable(test_gtest src/test.cpp)
 target_link_libraries(test_gtest PRIVATE beta_gsl beta_cuda GTest::GTest GTest::Main)
 set_target_properties( test_gtest
                        PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-set_target_properties(test_gtest PROPERTIES CUDA_ARCHITECTURES "80")
+set_target_properties(test_gtest PROPERTIES CUDA_ARCHITECTURES "75;80;86")
 
 gtest_discover_tests(test_gtest)
  
@@ -117,7 +117,7 @@ target_link_libraries(main_gsl_test PRIVATE beta_gsl)
 add_executable(main_cuda_test src/main_cu.cpp)
 set_target_properties( main_cuda_test
                        PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-set_target_properties(main_cuda_test PROPERTIES CUDA_ARCHITECTURES "80")
+set_target_properties(main_cuda_test PROPERTIES CUDA_ARCHITECTURES "75;80;86")
 target_link_libraries(main_cuda_test PRIVATE beta_cuda)
  
 if(APPLE)
@@ -137,7 +137,7 @@ endif()
 add_executable(benchmark_test src/profiling_tests/benchmark_test.cpp)
 set_target_properties( benchmark_test
                        PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-set_target_properties(benchmark_test PROPERTIES CUDA_ARCHITECTURES "80")
+set_target_properties(benchmark_test PROPERTIES CUDA_ARCHITECTURES "75;80;86")
 target_link_libraries(benchmark_test PRIVATE beta_cuda beta_gsl OpenMP::OpenMP_CXX)
 
 if(APPLE)
@@ -157,7 +157,7 @@ endif()
 add_executable(benchmark_cont_frac src/profiling_tests/benchmark_cont_frac.cpp)
 set_target_properties( benchmark_cont_frac
                        PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-set_target_properties(benchmark_cont_frac PROPERTIES CUDA_ARCHITECTURES "80")
+set_target_properties(benchmark_cont_frac PROPERTIES CUDA_ARCHITECTURES "75;80;86")
 target_link_libraries(benchmark_cont_frac PRIVATE beta_cuda beta_gsl OpenMP::OpenMP_CXX)
 
 if(APPLE)
@@ -177,7 +177,7 @@ endif()
 add_executable(bench_base src/profiling_tests/bench.cu src/src_cuda/BetaDistCuda.cu)
 set_target_properties( bench_base
                        PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-set_target_properties(bench_base PROPERTIES CUDA_ARCHITECTURES "80")
+set_target_properties(bench_base PROPERTIES CUDA_ARCHITECTURES "75;80;86")
 target_compile_options(bench_base PRIVATE $<$<COMPILE_LANGUAGE:CUDA>: --compiler-options -fopenmp -Xcompiler=-fopenmp>)
 target_link_libraries(bench_base PRIVATE beta_gsl OpenMP::OpenMP_CXX)
 
