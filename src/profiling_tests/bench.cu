@@ -94,7 +94,7 @@ void parse_leftover_args(int argc, char *argv[], CommandLineOptions& options) {
     bool used = false;
 
     if (arg == "-p") {
-      if (options.exec_mode != CommandLineOptions::ExecutionMode::CUDA && options.exec_mode != CommandLineOptions::ExecutionMode::CUDA_F) {
+      if (options.exec_mode != CommandLineOptions::ExecutionMode::CUDA && options.exec_mode != CommandLineOptions::ExecutionMode::CUDA_F && options.exec_mode != CommandLineOptions::ExecutionMode::CUDA_OMP) {
         exit(EXIT_FAILURE);
       }
       options.using_pinned_memory = true;
