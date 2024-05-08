@@ -13,7 +13,7 @@ EXECUTABLE=bin/bench_base
 
 for i in 10000000 100000000 1000000000
 do
-    for j in cuda cuda_f omp
+    for j in cuda omp cuda_omp
     do
         for f in betacdf
         do

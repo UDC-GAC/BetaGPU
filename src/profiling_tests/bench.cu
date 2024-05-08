@@ -28,7 +28,8 @@ struct CommandLineOptions {
     SEQ,
     OMP,
     CUDA,
-    CUDA_F
+    CUDA_F,
+    CUDA_OMP
   };
 
   enum class FunctionName {
@@ -71,8 +72,10 @@ CommandLineOptions::ExecutionMode parse_exec_mode(char* str) {
     return CommandLineOptions::ExecutionMode::CUDA;
   if (mode == "cuda_f")
     return CommandLineOptions::ExecutionMode::CUDA_F;
+  if (mode == "cuda_omp")
+    return CommandLineOptions::ExecutionMode::CUDA_OMP;
   
-  throw std::invalid_argument("Invalid execution mode" + mode + "\n\t Valid execution modes are: seq, omp, cuda");
+  throw std::invalid_argument("Invalid execution mode" + mode + "\n\t Valid execution modes are: seq, omp, cuda, cuda_f and cuda_omp");
 }
 
 CommandLineOptions::FunctionName parse_function_name(char* str) {
@@ -135,6 +138,8 @@ std::string mode_to_text(CommandLineOptions::ExecutionMode mode) {
     return "CUDA";
   case CommandLineOptions::ExecutionMode::CUDA_F:
     return "CUDA_F";
+  case CommandLineOptions::ExecutionMode::CUDA_OMP:
+    return "CUDA_OMP";
   }
   return "Unknown";
 }
@@ -163,18 +168,18 @@ void print_execution_parameters(const CommandLineOptions& options) {
   }
 }
 
-void execute_test(const CommandLineOptions& options, vector<double>& x, vector<float>& x_f, vector<double>& y, vector<float>& y_f, double alpha, double beta){
+void execute_test(const CommandLineOptions& options, double *x, float *x_f, double *y, float *y_f, double alpha, double beta, size_t v_size){
   switch (options.exec_mode) {
   case CommandLineOptions::ExecutionMode::SEQ:
     switch (options.function_name) {
     case CommandLineOptions::FunctionName::BETAPDF:
-      for (size_t i = 0; i < x.size(); i++) {
-        y.at(i) = betapdf(x.at(i), alpha, beta);
+      for (size_t i = 0; i < v_size; i++) {
+        y[i] = betapdf(x[i], alpha, beta);
       }
       break;
     case CommandLineOptions::FunctionName::BETACDF:
-      for (size_t i = 0; i < x.size(); i++) {
-        y.at(i) = betacdf(x.at(i), alpha, beta);
+      for (size_t i = 0; i < v_size; i++) {
+        y[i] = betacdf(x[i], alpha, beta);
       }
       break;
     }
@@ -183,14 +188,14 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, vector<f
     switch (options.function_name) {
     case CommandLineOptions::FunctionName::BETAPDF:
       #pragma omp parallel for schedule(static, 64)
-      for (size_t i = 0; i < x.size(); i++) {
-        y.at(i) = betapdf(x.at(i), alpha, beta);
+      for (size_t i = 0; i < v_size; i++) {
+        y[i] = betapdf(x[i], alpha, beta);
       }
       break;
     case CommandLineOptions::FunctionName::BETACDF:
       #pragma omp parallel for schedule(static, 64)
-      for (size_t i = 0; i < x.size(); i++) {
-        y.at(i) = betacdf(x.at(i), alpha, beta);
+      for (size_t i = 0; i < v_size; i++) {
+        y[i] = betacdf(x[i], alpha, beta);
       }
       break;
     }
@@ -198,20 +203,32 @@ void execute_test(const CommandLineOptions& options, vector<double>& x, vector<f
   case CommandLineOptions::ExecutionMode::CUDA:
     switch (options.function_name) {
     case CommandLineOptions::FunctionName::BETAPDF:
-      betapdf_cuda(x.data(), y.data(), alpha, beta, x.size());
+      betapdf_cuda(x, y, alpha, beta, v_size);
       break;
     case CommandLineOptions::FunctionName::BETACDF:
-      betacdf_cuda(x.data(), y.data(), alpha, beta, x.size());
+      betacdf_cuda(x, y, alpha, beta, v_size);
       break;
     }
     break;
   case CommandLineOptions::ExecutionMode::CUDA_F:
     switch (options.function_name) {
     case CommandLineOptions::FunctionName::BETAPDF:
-      betapdf_cuda(x_f.data(), y_f.data(), static_cast<float>(alpha), static_cast<float>(beta), x_f.size());
+      betapdf_cuda(x_f, y_f, static_cast<float>(alpha), static_cast<float>(beta), v_size);
       break;
     case CommandLineOptions::FunctionName::BETACDF:
-      betacdf_cuda_GPU_CPU(x.data(), y.data(), alpha, beta, x.size());
+      cerr << "CUDA FLOAT CDF not implemented" << endl;
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      break;
+    }
+    break;
+  case CommandLineOptions::ExecutionMode::CUDA_OMP:
+    switch (options.function_name) {
+    case CommandLineOptions::FunctionName::BETAPDF:
+      cerr << "CUDA OMP PDF not implemented" << endl;
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      break;
+    case CommandLineOptions::FunctionName::BETACDF:
+      betacdf_cuda_GPU_CPU(x, y, alpha, beta, v_size);
       break;
     }
     break;
@@ -246,7 +263,7 @@ main (int argc, char *argv[]) {
       double beta = 11.34 * i;
       
       auto start = profile_clock_t::now();
-      execute_test(options, x, x_f, y, y_f, alpha, beta);
+      execute_test(options, x.data(), x_f.data(), y.data(), y_f.data(), alpha, beta, options.num_elements);
       auto end = profile_clock_t::now();
 
       cerr << "Itr[" << i << "]\t\tTime = \t\t" << profile_duration_t(end - start).count() << endl;
@@ -255,11 +272,12 @@ main (int argc, char *argv[]) {
     cerr << "Total time = " << profile_duration_t(full_end - full_start).count() << endl;
 
   } else {
-     if (options.exec_mode == CommandLineOptions::ExecutionMode::CUDA) {
+     if (options.exec_mode == CommandLineOptions::ExecutionMode::CUDA || options.exec_mode == CommandLineOptions::ExecutionMode::CUDA_OMP) {
       double* x; 
       double* y;
       cudaMallocHost(&x, options.num_elements * sizeof(double));
       cudaMallocHost(&y, options.num_elements * sizeof(double));
+      float *x_f, *y_f;
 
       for (int i = 0; i < options.num_elements; i++) {
         x[i] = rand() / (double)RAND_MAX;
@@ -271,10 +289,7 @@ main (int argc, char *argv[]) {
         double beta = 11.34 * i;
         
         auto start = profile_clock_t::now();
-        if (options.function_name == CommandLineOptions::FunctionName::BETAPDF)
-          betapdf_cuda(x, y, alpha, beta, options.num_elements);
-        if (options.function_name == CommandLineOptions::FunctionName::BETACDF)
-          betacdf_cuda(x, y, alpha, beta, options.num_elements);
+        execute_test(options, x, x_f, y, y_f, alpha, beta, options.num_elements);
         auto end = profile_clock_t::now();
 
         cerr << "Itr[" << i << "]\t\tTime = \t\t" << profile_duration_t(end - start).count() << endl;
@@ -286,6 +301,7 @@ main (int argc, char *argv[]) {
       cudaFreeHost(y);
      }
      if (options.exec_mode == CommandLineOptions::ExecutionMode::CUDA_F){
+      double *x_d, *y_d;
       float* x; 
       float* y;
       cudaMallocHost(&x, options.num_elements * sizeof(float));
@@ -301,12 +317,7 @@ main (int argc, char *argv[]) {
         float beta = 5000 * i;
         
         auto start = profile_clock_t::now();
-        if (options.function_name == CommandLineOptions::FunctionName::BETAPDF)
-          betapdf_cuda(x, y, alpha, beta, options.num_elements);
-        if (options.function_name == CommandLineOptions::FunctionName::BETACDF){
-          cerr << "CUDA FLOAT CDF not implemented" << endl;
-          std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        }
+        execute_test(options, x_d, x, y_d, y, alpha, beta, options.num_elements);
         auto end = profile_clock_t::now();
 
         cerr << "Itr[" << i << "]\t\tTime = \t\t" << profile_duration_t(end - start).count() << endl;
