@@ -52,7 +52,7 @@ __global__ void betapdf_kernel_h(float *x, float *y, float alpha, float beta, si
 
 
 // Look https://github.com/ampl/gsl/blob/master/cdf/beta_inc.c#L26
-__device__ double cuda_beta_cont_frac (const double a, const double b, const double x,
+__device__ __host__ double cuda_beta_cont_frac (const double a, const double b, const double x,
                 const double epsabs) {
   const unsigned int max_iter = 512;    /* control iterations      */
   const double cutoff = 2.0 * CUDA_DBL_MIN;      /* control the zero cutoff */
@@ -257,9 +257,10 @@ inline void launch_betacdf_withCF_kernel(double *d_x, double *d_y, double alpha,
 /* --------------- Auxiliar encapsulation functions --------------- */
 
 
-void beta_array_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size, KernelLauncher kernel_launcher){
-    
-    #ifdef DEBUG
+template <typename T, typename K>
+void beta_array_cuda(const T *x, T *y, const T alpha, const T beta, unsigned long size, K kernel_launcher){
+
+  #ifdef DEBUG
     cudaEvent_t t1, t2, t3, t4;
     float elapsedMemcpyCG, elapsedKernel, elapsedMemcpyGC, elapsedTotal;
     cudaEventCreate(&t1);
@@ -268,41 +269,41 @@ void beta_array_cuda(const double *x, double *y, const double alpha, const doubl
     cudaEventCreate(&t4);
 
     cudaEventRecord(t1, 0);
-    #endif
+  #endif
 
-    // Allocate memory on the device
-    double *d_x, *d_y;
+  // Allocate memory on the device
+  T *d_x, *d_y;
 
-    cudaMalloc(&d_x, size * sizeof(double));
-    cudaMalloc(&d_y, size * sizeof(double));
+  cudaMalloc(&d_x, size * sizeof(T));
+  cudaMalloc(&d_y, size * sizeof(T));
 
-    // Copy the data to the device
-    cudaMemcpy(d_x, x, size * sizeof(double), cudaMemcpyHostToDevice);
+  // Copy the data to the device
+  cudaMemcpy(d_x, x, size * sizeof(T), cudaMemcpyHostToDevice);
 
-    #ifdef DEBUG
+  #ifdef DEBUG
     cudaEventRecord(t2, 0);
     cudaEventSynchronize(t2);
     cudaEventElapsedTime(&elapsedMemcpyCG, t1, t2);
-    #endif
+  #endif
 
-    // Launch the kernel
-    int block_size = 256;
-    kernel_launcher(d_x, d_y, alpha, beta, size, block_size);
+  // Launch the kernel
+  int block_size = 256;
+  kernel_launcher(d_x, d_y, alpha, beta, size, block_size);
 
-    #ifdef DEBUG
+  #ifdef DEBUG
     cudaEventRecord(t3, 0);
     cudaEventSynchronize(t3);
     cudaEventElapsedTime(&elapsedKernel, t2, t3);
-    #endif
+  #endif
 
-    // Copy the result back to the host
-    cudaMemcpy(y, d_y, size * sizeof(double), cudaMemcpyDeviceToHost);
+  // Copy the result back to the host
+  cudaMemcpy(y, d_y, size * sizeof(T), cudaMemcpyDeviceToHost);
 
-    // Free the memory on the device
-    cudaFree(d_x);
-    cudaFree(d_y);
+  // Free the memory on the device
+  cudaFree(d_x);
+  cudaFree(d_y);
 
-    #ifdef DEBUG
+  #ifdef DEBUG
     cudaEventRecord(t4, 0);
     cudaEventSynchronize(t4);
     cudaEventElapsedTime(&elapsedMemcpyGC, t3, t4);
@@ -311,143 +312,9 @@ void beta_array_cuda(const double *x, double *y, const double alpha, const doubl
     cerr << "Full function time(events) = " << elapsedTotal / 1000 << endl;
     cerr << "\tKernel execution time = " << elapsedKernel / 1000 << endl;
     cerr << "\tMemory transfer time = " << elapsedMemcpyCG / 1000 << " + " << elapsedMemcpyGC / 1000 << endl;
-    #endif
+  #endif
 
-    return;
-}
-
-void beta_array_cuda_float(const float *x, float *y, const float alpha, const float beta, unsigned long size, KernelLauncherFloat kernel_launcher){
-    
-    #ifdef DEBUG
-    cudaEvent_t t1, t2, t3, t4;
-    float elapsedMemcpyCG, elapsedKernel, elapsedMemcpyGC, elapsedTotal;
-    cudaEventCreate(&t1);
-    cudaEventCreate(&t2);
-    cudaEventCreate(&t3);
-    cudaEventCreate(&t4);
-
-    cudaEventRecord(t1, 0);
-    #endif
-
-    // Allocate memory on the device
-    float *d_x, *d_y;
-
-    cudaMalloc(&d_x, size * sizeof(float));
-    cudaMalloc(&d_y, size * sizeof(float));
-
-    // Copy the data to the device
-    cudaMemcpy(d_x, x, size * sizeof(float), cudaMemcpyHostToDevice);
-
-    #ifdef DEBUG
-    cudaEventRecord(t2, 0);
-    cudaEventSynchronize(t2);
-    cudaEventElapsedTime(&elapsedMemcpyCG, t1, t2);
-    #endif
-
-    // Launch the kernel
-    int block_size = 256;
-    kernel_launcher(d_x, d_y, alpha, beta, size, block_size);
-
-    #ifdef DEBUG
-    cudaEventRecord(t3, 0);
-    cudaEventSynchronize(t3);
-    cudaEventElapsedTime(&elapsedKernel, t2, t3);
-    #endif
-
-    // Copy the result back to the host
-    cudaMemcpy(y, d_y, size * sizeof(float), cudaMemcpyDeviceToHost);
-
-    // Free the memory on the device
-    cudaFree(d_x);
-    cudaFree(d_y);
-
-    #ifdef DEBUG
-    cudaEventRecord(t4, 0);
-    cudaEventSynchronize(t4);
-    cudaEventElapsedTime(&elapsedMemcpyGC, t3, t4);
-    cudaEventElapsedTime(&elapsedTotal, t1, t4);
-
-    cerr << "Full function time(events) = " << elapsedTotal / 1000 << endl;
-    cerr << "\tKernel execution time = " << elapsedKernel / 1000 << endl;
-    cerr << "\tMemory transfer time = " << elapsedMemcpyCG / 1000 << " + " << elapsedMemcpyGC / 1000 << endl;
-    #endif
-
-    return;
-}
-
-
-/* ----- Auxiliar tmp functions ----- */
-
-
-// Look https://github.com/ampl/gsl/blob/master/cdf/beta_inc.c#L26
-double tmp_beta_cont_frac (const double a, const double b, const double x,
-                const double epsabs) {
-  const unsigned int max_iter = 512;    /* control iterations      */
-  const double cutoff = 2.0 * CUDA_DBL_MIN;      /* control the zero cutoff */
-  unsigned int iter_count = 0;
-  double cf;
-
-  /* standard initialization for continued fraction */
-  double num_term = 1.0;
-  double den_term = 1.0 - (a + b) * x / (a + 1.0);
-
-  if (fabs (den_term) < cutoff)
-    den_term = nan("");
-
-  den_term = 1.0 / den_term;
-  cf = den_term;
-
-  while (iter_count < max_iter)
-    {
-      const int k = iter_count + 1;
-      double coeff = k * (b - k) * x / (((a - 1.0) + 2 * k) * (a + 2 * k));
-      double delta_frac;
-
-      /* first step */
-      den_term = 1.0 + coeff * den_term;
-      num_term = 1.0 + coeff / num_term;
-
-      if (fabs (den_term) < cutoff)
-        den_term = nan("");
-
-      if (fabs (num_term) < cutoff)
-        num_term = nan("");
-
-      den_term = 1.0 / den_term;
-
-      delta_frac = den_term * num_term;
-      cf *= delta_frac;
-
-      coeff = -(a + k) * (a + b + k) * x / ((a + 2 * k) * (a + 2 * k + 1.0));
-
-      /* second step */
-      den_term = 1.0 + coeff * den_term;
-      num_term = 1.0 + coeff / num_term;
-
-      if (fabs (den_term) < cutoff)
-        den_term = nan("");
-
-      if (fabs (num_term) < cutoff)
-        num_term = nan("");
-
-      den_term = 1.0 / den_term;
-
-      delta_frac = den_term * num_term;
-      cf *= delta_frac;
-
-      if (fabs (delta_frac - 1.0) < 2.0 * CUDA_DBL_EPSILON)
-        break;
-
-      if (cf * fabs (delta_frac - 1.0) < epsabs)
-        break;
-
-      ++iter_count;
-    }
-
-  if (iter_count >= max_iter)
-    return nan("");
-
-  return cf;
+  return;
 }
 
 
@@ -457,7 +324,7 @@ double tmp_beta_cont_frac (const double a, const double b, const double x,
 // CUDA kernel launch to compute the beta distribution
 void betapdf_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size){
     
-    beta_array_cuda(x, y, alpha, beta, size, launch_betapdf_kernel);
+    beta_array_cuda<double, KernelLauncher>(x, y, alpha, beta, size, launch_betapdf_kernel);
 
     return;
 }
@@ -465,7 +332,7 @@ void betapdf_cuda(const double *x, double *y, const double alpha, const double b
 // CUDA kernel launch to compute the beta distribution
 void betapdf_cuda(const float *x, float *y, const float alpha, const float beta, unsigned long size){
 
-    beta_array_cuda_float(x, y, alpha, beta, size, launch_betapdf_kernel_f);
+    beta_array_cuda<float, KernelLauncherFloat>(x, y, alpha, beta, size, launch_betapdf_kernel_f);
 
     return;
 }
@@ -473,14 +340,14 @@ void betapdf_cuda(const float *x, float *y, const float alpha, const float beta,
 // CUDA kernel launch to compute the beta distribution
 void betacdf_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size){
 
-    beta_array_cuda(x, y, alpha, beta, size, launch_betacdf_withCF_kernel);
+    beta_array_cuda<double, KernelLauncher>(x, y, alpha, beta, size, launch_betacdf_withCF_kernel);
 
     return;
 }
 
 void betacdf_cuda_GPU_CPU(const double *x, double *y, const double alpha, const double beta, unsigned long size){
     
-    beta_array_cuda(x, y, alpha, beta, size, launch_betacdf_prefactor_only_kernel);
+    beta_array_cuda<double, KernelLauncher>(x, y, alpha, beta, size, launch_betacdf_prefactor_only_kernel);
 
     #pragma omp parallel for schedule(static, 64)
     for (unsigned long i = 0; i < size; i++)
@@ -489,14 +356,14 @@ void betacdf_cuda_GPU_CPU(const double *x, double *y, const double alpha, const 
             /* Apply continued fraction directly. */
             double epsabs = 0.;
 
-            double cf = tmp_beta_cont_frac(alpha, beta, x[i], epsabs);
+            double cf = cuda_beta_cont_frac(alpha, beta, x[i], epsabs);
 
             y[i] = y[i] * cf / alpha;
         } else {
             /* Apply continued fraction after hypergeometric transformation. */
             double epsabs =
                 fabs(1. / (y[i] / beta)) * CUDA_DBL_EPSILON;
-            double cf = tmp_beta_cont_frac(beta, alpha, 1.0 - x[i], epsabs);
+            double cf = cuda_beta_cont_frac(beta, alpha, 1.0 - x[i], epsabs);
             double term = y[i] * cf / beta;
 
             y[i] = 1 - term;
