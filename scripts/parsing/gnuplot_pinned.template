@@ -34,7 +34,7 @@ set xlabel "Tamaño de datos" font ",16"
 show xlabel
 set ylabel "Speedup" font ",16"
 show ylabel
-set title "Aceleración de diferentes métodos ".title_function font "Helvetica Bold, 22"
+set title "Aceleración de ".title_function font "Helvetica Bold, 22"
 plot in_filename using 2:xtic(1) title columnheader lt rgb "#ffaaaa", \
         '' u 0:2:2  with labels font "Helvetica Bold,6" offset -19,0.75 rotate by 60 title " ", \
         '' using 3:xtic(1) title columnheader lt rgb "#ffcccc", \

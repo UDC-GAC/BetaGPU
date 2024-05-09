@@ -41,7 +41,8 @@ struct CommandLineOptions {
   int num_iterations;
   ExecutionMode exec_mode;
   FunctionName function_name;
-  bool using_pinned_memory;
+  bool using_pinned_memory = false;
+  bool using_sorted_data = false;
 };
 
 static std::string get_help_message(std::string prog_name) {
@@ -50,7 +51,8 @@ static std::string get_help_message(std::string prog_name) {
   num_iterations: Number of iterations to run the test
   exec_mode: Execution mode (seq, omp, cuda, cuda_f)
   function_name: Name of the function to test (betapdf, betacdf)
-  -p: Use pinned memory (only for CUDA mode)
+  -p: Use pinned memory (only for CUDA modes)
+  -s: Use sorted data
 )";
 }
 
@@ -101,6 +103,11 @@ void parse_leftover_args(int argc, char *argv[], CommandLineOptions& options) {
       used = true;
     }
 
+    if (arg == "-s") {
+      options.using_sorted_data = true;
+      used = true;
+    }
+
     // ...
 
     if (!used) {
@@ -121,6 +128,7 @@ CommandLineOptions parse_command_line(int argc, char *argv[]) {
   options.exec_mode = parse_exec_mode(argv[3]);
   options.function_name = parse_function_name(argv[4]);
   options.using_pinned_memory = false;
+  options.using_sorted_data = false;
   if (argc > 5) {
     parse_leftover_args(argc-5, argv+5, options);
   }
@@ -137,9 +145,9 @@ std::string mode_to_text(CommandLineOptions::ExecutionMode mode) {
   case CommandLineOptions::ExecutionMode::CUDA:
     return "CUDA";
   case CommandLineOptions::ExecutionMode::CUDA_F:
-    return "CUDA_F";
+    return "CUDA\\_F";
   case CommandLineOptions::ExecutionMode::CUDA_OMP:
-    return "CUDA_OMP";
+    return "CUDA\\_OMP";
   }
   return "Unknown";
 }
@@ -156,6 +164,7 @@ std::string function_to_test(CommandLineOptions::FunctionName function) {
 
 void print_execution_parameters(const CommandLineOptions& options) {
   std::string pinned_text = options.using_pinned_memory ? "^{pinned}" : "";
+  std::string sorted_text = options.using_sorted_data ? "[sorted]" : "";
   cerr << "+------------------------------------+" << endl;
   cerr << "|        Execution Parameters        |" << endl;
   cerr << "+------------------------------------+" << endl;
@@ -235,8 +244,25 @@ void execute_test(const CommandLineOptions& options, double *x, float *x_f, doub
   }
 }
 
+template <typename T>
+void generate_data(T *data, size_t size, bool sorted = false) {
+  if (sorted) {
+    T step = 1.0 / size+1.0;
+    for (size_t i = 0; i < size; i++) {
+      data[i] = (i+1) * step;
+    }
+    return;
+  } else {
+    for (size_t i = 0; i < size; i++) {
+      data[i] = rand() / (T)RAND_MAX;
+    }
+  }
+}
+
 int 
 main (int argc, char *argv[]) {
+
+  srand(4135);
 
   CommandLineOptions options = parse_command_line(argc, argv);
   print_execution_parameters(options);
@@ -250,9 +276,7 @@ main (int argc, char *argv[]) {
       y_f.resize(options.num_elements);
     }
 
-    for (int i = 0; i < options.num_elements; i++) {
-      x[i] = rand() / (double)RAND_MAX;
-    }
+    generate_data<double>(x.data(), options.num_elements, options.using_sorted_data);
 
     if (options.exec_mode == CommandLineOptions::ExecutionMode::CUDA_F)
       std::transform(x.begin(), x.end(), x_f.begin(), [](double x) { return (float)x; });
@@ -279,9 +303,7 @@ main (int argc, char *argv[]) {
       cudaMallocHost(&y, options.num_elements * sizeof(double));
       float *x_f, *y_f;
 
-      for (int i = 0; i < options.num_elements; i++) {
-        x[i] = rand() / (double)RAND_MAX;
-      }
+      generate_data<double>(x, options.num_elements, options.using_sorted_data);
 
       auto full_start = profile_clock_t::now();
       for (int i = 1; i <= options.num_iterations; i++) {
@@ -307,14 +329,12 @@ main (int argc, char *argv[]) {
       cudaMallocHost(&x, options.num_elements * sizeof(float));
       cudaMallocHost(&y, options.num_elements * sizeof(float));
 
-      for (int i = 0; i < options.num_elements; i++) {
-        x[i] = rand() / (float)RAND_MAX;
-      }
+      generate_data<float>(x, options.num_elements, options.using_sorted_data);
 
       auto full_start = profile_clock_t::now();
       for (int i = 1; i <= options.num_iterations; i++) {
-        float alpha = 5000 * i;
-        float beta = 5000 * i;
+        double alpha = 9.34 * i;
+        double beta = 11.34 * i;
         
         auto start = profile_clock_t::now();
         execute_test(options, x_d, x, y_d, y, alpha, beta, options.num_elements);
