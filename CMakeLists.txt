@@ -17,6 +17,10 @@ find_package(GSL REQUIRED)
 find_package(GTest REQUIRED)
 find_package(OpenMP REQUIRED)
 
+## Python binding
+find_package(pybind11 REQUIRED)
+set(PYBIND11_CPP_STANDARD -std=c++17)
+
 include(GoogleTest)
 
 file(GLOB_RECURSE GSL_LIB_FILES "src/src_ref/*.cpp")
@@ -63,7 +67,9 @@ add_library(beta_cuda STATIC ${CUDA_LIB_FILES} )
 target_compile_features(beta_cuda PUBLIC cxx_std_17)
 target_link_libraries(beta_cuda PRIVATE GSL::gsl OpenMP::OpenMP_CXX)
 set_target_properties( beta_cuda
-                       PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+                       PROPERTIES 
+                       POSITION_INDEPENDENT_CODE ON
+                       CUDA_SEPARABLE_COMPILATION ON)
 set_target_properties(beta_cuda PROPERTIES CUDA_ARCHITECTURES "75;80;86")
 
  
@@ -136,7 +142,9 @@ endif()
 
 add_executable(benchmark_test src/profiling_tests/benchmark_test.cpp)
 set_target_properties( benchmark_test
-                       PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+                       PROPERTIES 
+                       POSITION_INDEPENDENT_CODE ON
+                       CUDA_SEPARABLE_COMPILATION ON)
 set_target_properties(benchmark_test PROPERTIES CUDA_ARCHITECTURES "75;80;86")
 target_link_libraries(benchmark_test PRIVATE beta_cuda beta_gsl OpenMP::OpenMP_CXX)
 
@@ -188,3 +196,16 @@ if(APPLE)
                PROPERTY
                BUILD_RPATH ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
 endif()
+
+
+#
+#
+# Python binding
+#
+#
+
+add_library(BetaDistCuda MODULE src/pybindings/BetaDistCuda.cpp)
+set_target_properties(BetaDistCuda PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
+                                           SUFFIX "${PYTHON_MODULE_EXTENSION}"
+                                          CUDA_ARCHITECTURES "75;80;86")
+target_link_libraries(BetaDistCuda PRIVATE beta_cuda OpenMP::OpenMP_CXX pybind11::module)

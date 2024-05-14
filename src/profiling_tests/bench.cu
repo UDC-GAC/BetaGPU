@@ -247,7 +247,7 @@ void execute_test(const CommandLineOptions& options, double *x, float *x_f, doub
 template <typename T>
 void generate_data(T *data, size_t size, bool sorted = false) {
   if (sorted) {
-    T step = 1.0 / size+1.0;
+    T step = 1.0 / (size+1.0);
     for (size_t i = 0; i < size; i++) {
       data[i] = (i+1) * step;
     }
