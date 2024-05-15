@@ -19,8 +19,10 @@ using profile_duration_t = std::chrono::duration<double>;
 #endif
 
 // Define a type for the function that launches the kernel
-typedef void (*KernelLauncher)(double*, double*, double, double, int, int);
-typedef void (*KernelLauncherFloat)(float*, float*, float, float, int, int);
+typedef void (*KernelLauncher)(double*, double*, double, double, int, int, cudaStream_t stream);
+typedef void (*KernelLauncherFloat)(float*, float*, float, float, int, int, cudaStream_t stream);
+
+const cudaStream_t CUDA_DEFAULT_STREAM = (cudaStream_t) 0;
 
 
 /* --------------- Beta PDF Kernels --------------- */
@@ -231,31 +233,44 @@ __global__ void betacdf_prefix_only_kernel(double *x, double *y, double alpha, d
 /* --------------- Kernel launchers --------------- */
 
 
-inline void launch_betapdf_kernel(double *d_x, double *d_y, double alpha, double beta, int size, int block_size) {
+inline void launch_betapdf_kernel(double *d_x, double *d_y, double alpha, double beta, int size, int block_size, cudaStream_t stream=CUDA_DEFAULT_STREAM) {
     int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
-    betapdf_kernel<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, size);
+    betapdf_kernel<<<n_blocks, block_size,0,stream>>>(d_x, d_y, alpha, beta, size);
+
 }
 
-inline void launch_betapdf_kernel_f(float *d_x, float *d_y, float alpha, float beta, int size, int block_size) {
+inline void launch_betapdf_kernel_f(float *d_x, float *d_y, float alpha, float beta, int size, int block_size, cudaStream_t stream=CUDA_DEFAULT_STREAM) {
     int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
-    betapdf_kernel_f<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, size);
+    betapdf_kernel_f<<<n_blocks, block_size,0,stream>>>(d_x, d_y, alpha, beta, size);
 }
 
-inline void launch_betacdf_prefactor_only_kernel(double *d_x, double *d_y, double alpha, double beta, int size, int block_size) {
+inline void launch_betacdf_prefactor_only_kernel(double *d_x, double *d_y, double alpha, double beta, int size, int block_size, cudaStream_t stream=CUDA_DEFAULT_STREAM) {
     int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
     double ln_beta = gsl_sf_lnbeta(alpha, beta);
-    betacdf_prefix_only_kernel<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, ln_beta, size);
+    betacdf_prefix_only_kernel<<<n_blocks, block_size,0,stream>>>(d_x, d_y, alpha, beta, ln_beta, size);
 }
 
-inline void launch_betacdf_withCF_kernel(double *d_x, double *d_y, double alpha, double beta, int size, int block_size) {
+inline void launch_betacdf_withCF_kernel(double *d_x, double *d_y, double alpha, double beta, int size, int block_size, cudaStream_t stream=CUDA_DEFAULT_STREAM) {
     int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
     double ln_beta = gsl_sf_lnbeta(alpha, beta);
-    betacdf_CF_kernel<<<n_blocks, block_size>>>(d_x, d_y, alpha, beta, ln_beta, size);
+    betacdf_CF_kernel<<<n_blocks, block_size,0,stream>>>(d_x, d_y, alpha, beta, ln_beta, size);
 }
 
 
 /* --------------- Auxiliar encapsulation functions --------------- */
 
+size_t get_free_GPU_memory(){
+  size_t free_bytes, total_bytes;
+
+  cudaMemGetInfo( &free_bytes, &total_bytes);
+
+  #ifdef DEBUG
+    size_t used_bytes = total_bytes - free_bytes;
+    std::cerr << "GPU memory usage: " << (used_bytes>>20) << " bytes used, " << (free_bytes>>20) << " bytes free, " << (total_bytes>>20) << " bytes total." << std::endl;
+  #endif
+
+  return free_bytes;
+}
 
 template <typename T, typename K>
 void beta_array_cuda(const T *x, T *y, const T alpha, const T beta, unsigned long size, K kernel_launcher){
@@ -288,7 +303,7 @@ void beta_array_cuda(const T *x, T *y, const T alpha, const T beta, unsigned lon
 
   // Launch the kernel
   int block_size = 256;
-  kernel_launcher(d_x, d_y, alpha, beta, size, block_size);
+  kernel_launcher(d_x, d_y, alpha, beta, size, block_size, CUDA_DEFAULT_STREAM);
 
   #ifdef DEBUG
     cudaEventRecord(t3, 0);
@@ -317,6 +332,53 @@ void beta_array_cuda(const T *x, T *y, const T alpha, const T beta, unsigned lon
   return;
 }
 
+template <typename T, typename K>
+void beta_array_cuda_streams(const T *x, T *y, const T alpha, const T beta, unsigned long size, K kernel_launcher, const unsigned int num_streams=2, const unsigned int chunks_per_stream=2){
+
+  // Allocate memory on the device
+  T *d_x[num_streams], *d_y[num_streams];
+
+  unsigned long chunk_size = size / chunks_per_stream;
+  unsigned long chunks_stream_size = chunk_size / num_streams;
+
+  // Create streams
+  cudaStream_t streams[num_streams];
+  for (unsigned int i = 0; i < num_streams; i++){
+    cudaStreamCreate(&streams[i]);
+
+    // Allocate memory on the device
+    cudaMalloc(&d_x[i], chunks_stream_size * sizeof(T));
+    cudaMalloc(&d_y[i], chunks_stream_size * sizeof(T));
+  }
+
+  // Work 
+  for (int block_idx = 0; block_idx < chunks_per_stream; block_idx++){
+    unsigned long global_chunk_start = block_idx * chunk_size;
+    for (int stream_idx = 0; stream_idx < num_streams; stream_idx++){
+      unsigned long start_idx = global_chunk_start + stream_idx * chunks_stream_size;
+
+      // Copy the data to the device
+      cudaMemcpyAsync(d_x[stream_idx], x + start_idx, chunks_stream_size * sizeof(T), cudaMemcpyHostToDevice, streams[stream_idx]);
+
+      kernel_launcher(d_x[stream_idx], d_y[stream_idx], alpha, beta, chunks_stream_size, 256, streams[stream_idx]);
+
+      cudaMemcpyAsync(y + start_idx, d_y[stream_idx], chunks_stream_size * sizeof(T), cudaMemcpyDeviceToHost, streams[stream_idx]);
+    }
+  }
+
+  // Destroy streams
+  for (unsigned int i = 0; i < num_streams; i++){
+    cudaStreamDestroy(streams[i]);
+
+    // Free the memory on the device
+    cudaFree(d_x[i]);
+    cudaFree(d_y[i]);
+  }
+
+  return;
+
+}
+
 
 /* --------------- Export fuctions --------------- */
 
@@ -324,7 +386,9 @@ void beta_array_cuda(const T *x, T *y, const T alpha, const T beta, unsigned lon
 // CUDA kernel launch to compute the beta distribution
 void betapdf_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size){
     
-    beta_array_cuda<double, KernelLauncher>(x, y, alpha, beta, size, launch_betapdf_kernel);
+    get_free_GPU_memory();
+    //beta_array_cuda<double, KernelLauncher>(x, y, alpha, beta, size, launch_betapdf_kernel);
+    beta_array_cuda_streams<double, KernelLauncher>(x, y, alpha, beta, size, launch_betapdf_kernel, 2, 20);
 
     return;
 }
