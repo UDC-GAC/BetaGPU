@@ -160,17 +160,17 @@ CommandLineOptions parse_command_line(int argc, char *argv[]) {
 std::string mode_to_text(CommandLineOptions::ExecutionMode mode) {
   switch (mode) {
   case CommandLineOptions::ExecutionMode::SEQ:
-    return "Sequential";
+    return "001.-Sequential";
   case CommandLineOptions::ExecutionMode::OMP:
-    return "OpenMP";
+    return "002.-OpenMP";
   case CommandLineOptions::ExecutionMode::CUDA:
-    return "CUDA";
+    return "003.-CUDA";
   case CommandLineOptions::ExecutionMode::CUDA_F:
-    return "CUDA\\_F";
+    return "004.-CUDA\\_F";
   case CommandLineOptions::ExecutionMode::CUDA_OMP:
-    return "CUDA\\_OMP";
+    return "005.-CUDA\\_OMP";
   }
-  return "Unknown";
+  return "000.-Unknown";
 }
 
 std::string function_to_test(CommandLineOptions::FunctionName function) {
