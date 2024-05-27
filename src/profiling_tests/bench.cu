@@ -19,7 +19,8 @@ using profile_clock_t = std::chrono::high_resolution_clock;
 using profile_duration_t = std::chrono::duration<double>;
 
 
-
+const double DEFAULT_ALPHA = 9.34;
+const double DEFAULT_BETA = 11.34;
 
 
 struct CommandLineOptions {
@@ -43,6 +44,8 @@ struct CommandLineOptions {
   FunctionName function_name;
   bool using_pinned_memory = false;
   bool using_sorted_data = false;
+  double alpha = DEFAULT_ALPHA;
+  double beta = DEFAULT_BETA;
 };
 
 static std::string get_help_message(std::string prog_name) {
@@ -53,6 +56,8 @@ static std::string get_help_message(std::string prog_name) {
   function_name: Name of the function to test (betapdf, betacdf)
   -p: Use pinned memory (only for CUDA modes)
   -s: Use sorted data
+  -a [value]: Alpha parameter for the Beta distribution (default: 9.34)
+  -b [value]: Beta parameter for the Beta distribution (default: 11.34)
 )";
 }
 
@@ -105,6 +110,22 @@ void parse_leftover_args(int argc, char *argv[], CommandLineOptions& options) {
 
     if (arg == "-s") {
       options.using_sorted_data = true;
+      used = true;
+    }
+
+    if (arg == "-a") {
+      if (i+1 >= argc) {
+        throw std::invalid_argument("Missing argument for -a");
+      }
+      options.alpha = std::stod(argv[++i]);
+      used = true;
+    }
+
+    if (arg == "-b") {
+      if (i+1 >= argc) {
+        throw std::invalid_argument("Missing argument for -b");
+      }
+      options.beta = std::stod(argv[++i]);
       used = true;
     }
 
@@ -172,6 +193,8 @@ void print_execution_parameters(const CommandLineOptions& options) {
   cerr << "\tNumber of iterations: " << options.num_iterations << endl;
   cerr << "\tExecution mode: " << mode_to_text(options.exec_mode) << pinned_text << endl;
   cerr << "\tFunction name: " << function_to_test(options.function_name) << endl;
+  cerr << "\tAlpha: " << options.alpha << endl;
+  cerr << "\tBeta: " << options.beta << endl;
   if (options.exec_mode == CommandLineOptions::ExecutionMode::OMP) {
     cerr << "\tNumber of threads: " << omp_get_max_threads() << endl;
   }
@@ -266,6 +289,8 @@ main (int argc, char *argv[]) {
 
   CommandLineOptions options = parse_command_line(argc, argv);
   print_execution_parameters(options);
+  double alpha = options.alpha;
+  double beta = options.beta;
 
   if (!options.using_pinned_memory) {
   
@@ -283,8 +308,6 @@ main (int argc, char *argv[]) {
 
     auto full_start = profile_clock_t::now();
     for (int i = 1; i <= options.num_iterations; i++) {
-      double alpha = 9.34 * i;
-      double beta = 11.34 * i;
       
       auto start = profile_clock_t::now();
       execute_test(options, x.data(), x_f.data(), y.data(), y_f.data(), alpha, beta, options.num_elements);
@@ -307,8 +330,6 @@ main (int argc, char *argv[]) {
 
       auto full_start = profile_clock_t::now();
       for (int i = 1; i <= options.num_iterations; i++) {
-        double alpha = 9.34 * i;
-        double beta = 11.34 * i;
         
         auto start = profile_clock_t::now();
         execute_test(options, x, x_f, y, y_f, alpha, beta, options.num_elements);
@@ -333,8 +354,6 @@ main (int argc, char *argv[]) {
 
       auto full_start = profile_clock_t::now();
       for (int i = 1; i <= options.num_iterations; i++) {
-        double alpha = 9.34 * i;
-        double beta = 11.34 * i;
         
         auto start = profile_clock_t::now();
         execute_test(options, x_d, x, y_d, y, alpha, beta, options.num_elements);
