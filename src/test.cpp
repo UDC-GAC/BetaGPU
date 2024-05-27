@@ -7,6 +7,7 @@
 #include <ctime>
 #include <iostream>
 #include <vector>
+#include <omp.h>
 
 #include <gtest/gtest.h>
 
@@ -36,6 +37,29 @@ protected:
     x.resize(SMALL_SIZE);
 
     for (int i = 0; i < SMALL_SIZE; i++) {
+      x[i] = rand() / (double)RAND_MAX;
+    }
+
+    alpha = .1;
+    beta = .1;
+  }
+
+const unsigned int seed = time(NULL);
+vector<double> x;
+double alpha;
+double beta;
+};
+
+class BIG_BETA_TEST : public ::testing::Test {
+protected:
+  void SetUp() override {
+    // Code here will be called immediately after the constructor (right
+    // before each test).
+    srand(seed);
+
+    x.resize(LARGE_SIZE);
+
+    for (int i = 0; i < LARGE_SIZE; i++) {
       x[i] = rand() / (double)RAND_MAX;
     }
 
@@ -130,6 +154,26 @@ TEST_F(BETA_TEST, SmallComaprisonCDF) {
   betacdf_cuda(x.data(), y2.data(), alpha, beta, SMALL_SIZE);
 
   for (int j = 0; j < SMALL_SIZE; j++) {
+    EXPECT_NEAR(y1.at(j), y2.at(j), PRECISION_TOLERANCE_CLOSE_EQ);
+  }
+}
+
+// Test case for #cdf
+TEST_F(BIG_BETA_TEST, BigComaprisonCDF) {
+
+  vector<double> y1(MID_SIZE), y2(MID_SIZE);
+
+  size_t size = MID_SIZE;
+
+  omp_set_num_threads( omp_get_num_procs() );
+  #pragma omp parallel for
+  for (size_t j = 0; j < size; j++) {
+    y1.at(j) = betacdf(x.at(j), alpha, beta);
+  }
+
+  betacdf_cuda(x.data(), y2.data(), alpha, beta, MID_SIZE);
+
+  for (int j = 0; j < 100; j++) {
     EXPECT_NEAR(y1.at(j), y2.at(j), PRECISION_TOLERANCE_CLOSE_EQ);
   }
 }

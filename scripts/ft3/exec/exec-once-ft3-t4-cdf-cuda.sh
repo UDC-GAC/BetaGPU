@@ -13,14 +13,14 @@ EXECUTABLE=bin/bench_base
 
 for i in 10000000 100000000 1000000000
 do
-    for j in cuda omp cuda_omp
+    for j in cuda cuda_omp omp
     do
         for f in betacdf
         do
             for n in {1..7}
             do
-                OMP_NUM_THREADS=32 $EXECUTABLE $i 1 $j $f
-                OMP_NUM_THREADS=32 $EXECUTABLE $i 1 $j $f -p
+                OMP_NUM_THREADS=32 $EXECUTABLE $i 1 $j $f -s
+                OMP_NUM_THREADS=32 $EXECUTABLE $i 1 $j $f -p -s
             done
         done
     done

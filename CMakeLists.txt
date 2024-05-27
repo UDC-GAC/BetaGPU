@@ -87,7 +87,7 @@ set_target_properties(beta_cuda PROPERTIES CUDA_ARCHITECTURES "75;80;86")
 #
 
 add_executable(test_gtest src/test.cpp)
-target_link_libraries(test_gtest PRIVATE beta_gsl beta_cuda GTest::GTest GTest::Main)
+target_link_libraries(test_gtest PRIVATE beta_gsl beta_cuda OpenMP::OpenMP_CXX GTest::GTest GTest::Main )
 set_target_properties( test_gtest
                        PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 set_target_properties(test_gtest PROPERTIES CUDA_ARCHITECTURES "75;80;86")
