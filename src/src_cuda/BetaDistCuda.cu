@@ -399,14 +399,14 @@ void beta_array_cuda_wrapper (const T *x, T *y, const T alpha, const T beta, uns
     #ifdef DEBUG
       std::cerr << "+- Using normal function." << std::endl;
     #endif
-    beta_array_cuda<T, K>(x, y, alpha, beta, size, launch_betapdf_kernel);
+    beta_array_cuda<T, K>(x, y, alpha, beta, size, kernel_launcher);
   } else {
     // If i don't have enough memory, use streams
     unsigned int chunks_per_stream = (needed_bytes / free_bytes) + 1;
     #ifdef DEBUG
       std::cerr << "+- Using streams with " << chunks_per_stream << " chunks per stream." << std::endl;
     #endif
-    beta_array_cuda_streams_tmp<T, K>(x, y, alpha, beta, size, launch_betapdf_kernel, 2, chunks_per_stream);
+    beta_array_cuda_streams<T, K>(x, y, alpha, beta, size, kernel_launcher, 2, chunks_per_stream);
   }
 
   return;
