@@ -36,13 +36,13 @@ set ylabel "Speedup" font ",16"
 show ylabel
 set title "Aceleración de ".title_function font "Helvetica Bold, 22"
 plot in_filename using 2:xtic(1) title columnheader lt rgb "#ffaaaa", \
-        '' u 0:2:2  with labels font "Helvetica Bold,6" offset -19,0.75 rotate by 60 title " ", \
+        '' every ::1 u 0:2:2  with labels font "Helvetica Bold,6" offset -4.25,0.75 rotate by 60 title " ", \
         '' using 3:xtic(1) title columnheader lt rgb "#ffcccc", \
-        '' u 0:3:3  with labels font "Helvetica Bold,6" offset -16.85,0.75 rotate by 60 title " ", \
+        '' every ::1 u 0:3:3  with labels font "Helvetica Bold,6" offset -2,0.75 rotate by 60 title " ", \
         '' using 4:xtic(1) title columnheader lt rgb "#aaffaa" , \
-        '' u 0:4:4  with labels font "Helvetica Bold,6" offset -14.75,0.75 rotate by 60 title " ", \
+        '' every ::1 u 0:4:4  with labels font "Helvetica Bold,6" offset 0,0.75 rotate by 60 title " ", \
         '' using 5:xtic(1) title columnheader lt rgb "#ccffcc" , \
-        '' u 0:5:5  with labels font "Helvetica Bold,6" offset -12.65,0.75 rotate by 60 title " ", \
+        '' every ::1 u 0:5:5  with labels font "Helvetica Bold,6" offset 2,0.75 rotate by 60 title " ", \
         '' using 6:xtic(1) title columnheader lt rgb "#aaaaff" , \
-        '' u 0:6:6  with labels font "Helvetica Bold,6" offset -10.5,0.75 rotate by 60 title " ", \
+        '' every ::1 u 0:6:6  with labels font "Helvetica Bold,6" offset 4.25,0.75 rotate by 60 title " ", \
         

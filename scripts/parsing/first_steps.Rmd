@@ -1,0 +1,45 @@
+---
+title: "First Steps with R and Rmarkdown"
+author: "Alejandro Fernandez-Fraga"
+date: 2024-05-27
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: cosmo
+    highlight: tango
+---
+
+# First Steps with R and Rmarkdown
+
+This is a simple Rmarkdown document.
+
+## First steps
+
+This is a simple Rmarkdown document. You can write text, include code, and generate reports in different formats.
+
+## Code
+
+You can include R code in your document. For example, the following code generates a plot.
+
+```{r plot1}
+plot(1:10)
+```
+
+## Tables
+
+You can also include tables in your document. For example, the following code generates a table.
+
+```{r table1}
+library(knitr)
+kable(head(iris))
+```
+
+## Conclusion
+
+This is a simple Rmarkdown document. You can write text, include code, and generate reports in different formats.
+ 
+ - The code above generates a simple Rmarkdown document with text, code, and tables. You can save this code in a file with the extension  .Rmd  and render it to generate a report in HTML, PDF, or other formats. 
+ - You can render the document using the  rmarkdown  package. For example, to render the document to HTML, you can use the following code: `rmarkdown::render("first_steps.Rmd")`
+ - This code will generate an HTML file with the report. You can also render the document to other formats, such as PDF, Word, or PowerPoint. 
