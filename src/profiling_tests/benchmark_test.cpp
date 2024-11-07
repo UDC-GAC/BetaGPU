@@ -1,4 +1,4 @@
-#include "../src_cuda/BetaDistCuda.hpp"
+#include "BetaDistCuda.hpp"
 #include "../src_ref/BetaDistGsl.hpp"
 
 #include <chrono>

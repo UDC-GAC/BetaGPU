@@ -1,5 +1,5 @@
 #include "../src_ref/BetaDistGsl.hpp"
-#include "../src_cuda/BetaDistCuda.hpp"
+#include "BetaDistCuda.hpp"
 
 #include <algorithm>
 #include <chrono>

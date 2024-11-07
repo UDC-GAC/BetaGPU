@@ -23,8 +23,11 @@ set(PYBIND11_CPP_STANDARD -std=c++17)
 
 include(GoogleTest)
 
+include_directories(BEFORE ${CMAKE_SOURCE_DIR}/include/beta_cuda)
+
 file(GLOB_RECURSE GSL_LIB_FILES "src/src_ref/*.cpp")
 file(GLOB_RECURSE CUDA_LIB_FILES "src/src_cuda/*.cu")
+file(GLOB_RECURSE CUDA_LIB_INCLUDES "include/beta_cuda/*.hpp")
 
 # Compilation modes
 if (NOT CMAKE_BUILD_TYPE)
@@ -69,9 +72,13 @@ target_link_libraries(beta_cuda PRIVATE GSL::gsl OpenMP::OpenMP_CXX)
 set_target_properties( beta_cuda
                        PROPERTIES 
                        POSITION_INDEPENDENT_CODE ON
-                       CUDA_SEPARABLE_COMPILATION ON)
+                       CUDA_SEPARABLE_COMPILATION ON
+                       CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 set_target_properties(beta_cuda PROPERTIES CUDA_ARCHITECTURES "75;80;86")
 
+#move .hpp files to include
+install(FILES ${CUDA_LIB_INCLUDES} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/beta_cuda CONFIGURATIONS ${CMAKE_BUILD_TYPE})
+install(TARGETS beta_cuda DESTINATION ${CMAKE_INSTALL_PREFIX}/lib CONFIGURATIONS ${CMAKE_BUILD_TYPE})
  
 # We need to explicitly state that we need all CUDA files in the 
 # particle library to be built with -dc as the member functions 
