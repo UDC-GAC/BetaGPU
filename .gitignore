@@ -3,6 +3,7 @@ bin/
 build/
 lib/
 article/
+src/MyPackage
 *.i
 *.ii
 *.gpu
