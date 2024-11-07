@@ -43,3 +43,11 @@ This is a simple Rmarkdown document. You can write text, include code, and gener
  - The code above generates a simple Rmarkdown document with text, code, and tables. You can save this code in a file with the extension  .Rmd  and render it to generate a report in HTML, PDF, or other formats. 
  - You can render the document using the  rmarkdown  package. For example, to render the document to HTML, you can use the following code: `rmarkdown::render("first_steps.Rmd")`
  - This code will generate an HTML file with the report. You can also render the document to other formats, such as PDF, Word, or PowerPoint. 
+
+ ## Extra - Cite a R package
+
+You can also cite a R package in your document. For example, the following code cites the R-stats package.
+
+```{r cite1}
+citation("stats")
+```
