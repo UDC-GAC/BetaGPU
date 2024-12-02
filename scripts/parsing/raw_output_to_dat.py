@@ -66,7 +66,7 @@ def write_output_file(filename: str, executions: list[dict]) -> None:
 
     #Get all different "Execution mode" fields
     execution_modes = list(set([execution.get("Execution mode") for execution in executions]))
-    execution_modes.remove("Sequential")
+    execution_modes = [execution_mode for execution_mode in execution_modes if "Sequential" not in execution_mode]
     execution_modes.sort()
 
 
@@ -76,14 +76,14 @@ def write_output_file(filename: str, executions: list[dict]) -> None:
 
     exec_time_lines = []
 
-    base_executions = [execution for execution in executions if execution["Execution mode"] == "Sequential"]
+    base_executions = [execution for execution in executions if "Sequential" not in execution["Execution mode"]]
 
     for elementNum in elements:
         current_line = f"{elementNum}"
 
         execution = [execution for execution in base_executions if execution["Number of elements"] == elementNum][0]
         base_time = execution.get("ExecTime")
-        current_executions = [execution for execution in executions if execution["Number of elements"] == elementNum and execution["Execution mode"] != "Sequential"]
+        current_executions = [execution for execution in executions if execution["Number of elements"] == elementNum and ("Sequential" not in execution["Execution mode"])]
         current_executions.sort(key=lambda x: x["Execution mode"])
         for current_execution in current_executions:
             current_execution["Speedup"] = base_time / current_execution.get("ExecTime")
