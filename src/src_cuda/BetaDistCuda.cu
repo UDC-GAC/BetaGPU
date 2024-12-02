@@ -387,7 +387,7 @@ void beta_array_cuda_streams(const T *x, T *y, const T alpha, const T beta, unsi
 template <typename T, typename K>
 void beta_array_cuda_wrapper (const T *x, T *y, const T alpha, const T beta, unsigned long size, K kernel_launcher){
   size_t free_bytes = get_free_GPU_memory();
-  size_t needed_bytes = ((2 * size ) + 2)* sizeof(double); // 2 arrays of size +
+  size_t needed_bytes = ((2 * size ) + 2)* sizeof(T); // 2 arrays of size +
                                                            // 1 extra element per stream 
                                                            // (for odd distributions to fill the remainer element, 2 streams fixed)
 
