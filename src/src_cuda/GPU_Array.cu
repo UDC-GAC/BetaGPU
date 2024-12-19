@@ -1,5 +1,7 @@
 #include "GPU_Array.hpp"
 
+#include <new>
+
 /* --------------- GPU_Array Class  --------------- */
 
 template <typename T>
@@ -68,7 +70,7 @@ GPU_Array<T> &GPU_Array<T>::operator=(GPU_Array &&other) noexcept {
     this->size = other.size;
     this->memory_state = other.memory_state;
     std::swap(this->data_d, other.data_d);
-    tstd::swap(this->data_h, other.data_h);
+    std::swap(this->data_h, other.data_h);
     
 
     return *this;
@@ -168,9 +170,9 @@ void GPU_Array<T>::free(){
 template <typename T>
 void GPU_Array<T>::allocate(size_t elements){
     this->free();
-    cudaMalloc(&this->data_d, elements * sizeof(T));
-    cudaMallocHost(&this->data_h, elements * sizeof(T));
-    if (...){
+    cudaError_t codeGPU = cudaMalloc(&this->data_d, elements * sizeof(T));
+    cudaError_t codeCPU = cudaMallocHost(&this->data_h, elements * sizeof(T));
+    if (codeGPU != cudaSuccess || codeCPU != cudaSuccess){
         this->free();
         throw std::bad_alloc();
     }

@@ -253,6 +253,26 @@ TEST_F(GPU_ARRAY_TEST, SmallGPUArrayTestCDF_GPU_CPU) {
   EXPECT_THROW(betacdf_cuda_GPU_CPU(x.get_device_data(), y2.device_data(), alpha, beta, x.get_size(), Memory_Type::DEVICE), std::runtime_error);
 }
 
+/* ----- Tests for array functions ----- */
+
+TEST_F(GPU_ARRAY_TEST, SmallGPUArrayTestPDFArray) {
+  vector<double> y1(SMALL_SIZE); 
+  vector<double> y2(SMALL_SIZE * 3);
+  std::array<double, 3> alpha_arr = {alpha, alpha*2., alpha*3.};
+  std::array<double, 3> beta_arr = {beta, beta*2., beta*3.};
+
+
+
+  betapdf_cuda(x.get_host_data(), y2.data(), alpha_arr.data(), beta_arr.data(), x.get_size(), 3);
+
+  for (int i = 0; i < 3; i++) {
+    betapdf_cuda(x.get_host_data(), y1.data(), alpha_arr[i], beta_arr[i], x.get_size());
+    for (int j = 0; j < SMALL_SIZE; j++) {
+      EXPECT_EQ(y1.at(j), y2.at(i*SMALL_SIZE + j));
+    }
+  }
+}
+
 int 
 main (int argc, char *argv[]) {
 

@@ -22,6 +22,7 @@ using profile_duration_t = std::chrono::duration<double>;
 // Define a type for the function that launches the kernel
 typedef void (*KernelLauncher)(const double*, double*, double, double, int, int, cudaStream_t stream);
 typedef void (*KernelLauncherFloat)(const float*, float*, float, float, int, int, cudaStream_t stream);
+typedef void (*KernelArrayLauncher)(const double*, double*, const double*, const double*, size_t, size_t, size_t, cudaStream_t stream);
 
 const cudaStream_t CUDA_DEFAULT_STREAM = (cudaStream_t) 0;
 constexpr int DEFAULT_BLOCK_SIZE = 256;
@@ -48,6 +49,31 @@ __global__ void betapdf_kernel_h(const float *x, float *y, float alpha, float be
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size){
         y[idx] = powf(x[idx], alpha - 1) * powf(1 - x[idx], beta - 1) * expf(lgammaf(alpha + beta) - lgammaf(alpha) - lgammaf(beta));
+    }
+}
+
+__global__ void betapdf_kernel_array(const double *x, double *y, const double *alpha, const double *beta, const size_t data_size, const size_t betas_size){
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // Read alphas and betas to shared memory
+    extern __shared__ double alpha_beta_shared[];
+    int betas_offset = betas_size * sizeof(double);
+    for (int i = 0; i < betas_size; i+=blockDim.x){
+        if (i + threadIdx.x < betas_size){
+            alpha_beta_shared[i+threadIdx.x] = alpha[i+threadIdx.x];
+            alpha_beta_shared[betas_offset + i+threadIdx.x] = beta[i+threadIdx.x];
+        }
+    }
+    __syncthreads();
+
+    // Process your data point
+    if (idx < data_size){
+        double my_x = x[idx];
+        for (int i = 0; i < betas_size; i++){
+            double alpha_i = alpha_beta_shared[i];
+            double beta_i = alpha_beta_shared[betas_offset + i];
+            y[data_size * i + idx] = pow(my_x, alpha_i - 1) * pow(1 - my_x, beta_i - 1) * exp(lgamma(alpha_i + beta_i) - lgamma(alpha_i) - lgamma(beta_i));
+        }
     }
 }
 
@@ -241,6 +267,13 @@ inline void launch_betapdf_kernel(const double *d_x, double *d_y, double alpha, 
 
 }
 
+inline void launch_betapdf_kernel_array(const double *d_x, double *d_y, const double *d_alpha, const double *d_beta, size_t data_size, size_t betas_size, size_t block_size, cudaStream_t stream=CUDA_DEFAULT_STREAM) {
+    int n_blocks = data_size / block_size + (data_size % block_size == 0 ? 0 : 1);
+    int shared_memory_size = 2 * betas_size * sizeof(double);
+    betapdf_kernel_array<<<n_blocks, block_size,shared_memory_size,stream>>>(d_x, d_y, d_alpha, d_beta, data_size, betas_size);
+
+} 
+
 inline void launch_betapdf_kernel_f(const float *d_x, float *d_y, float alpha, float beta, int size, int block_size, cudaStream_t stream=CUDA_DEFAULT_STREAM) {
     int n_blocks = size / block_size + (size % block_size == 0 ? 0 : 1);
     betapdf_kernel_f<<<n_blocks, block_size,0,stream>>>(d_x, d_y, alpha, beta, size);
@@ -385,6 +418,81 @@ void beta_array_cuda_streams(const T *x, T *y, const T alpha, const T beta, unsi
 }
 
 template <typename T, typename K>
+void beta_array_cuda(const T *x, T *y, const T *alpha, const T *beta, unsigned long data_size, unsigned long betas_size, K kernel_launcher){
+
+  #ifdef DEBUG
+    cudaEvent_t t1, t2, t3, t4;
+    float elapsedMemcpyCG, elapsedKernel, elapsedMemcpyGC, elapsedTotal;
+    cudaEventCreate(&t1);
+    cudaEventCreate(&t2);
+    cudaEventCreate(&t3);
+    cudaEventCreate(&t4);
+
+    cudaEventRecord(t1, 0);
+  #endif
+
+  // Allocate memory on the device
+  T *d_x, *d_y;
+  T *d_alpha, *d_beta;
+
+  cudaMalloc(&d_x, data_size * sizeof(T));
+  cudaMalloc(&d_y, data_size * betas_size * sizeof(T));
+  cudaMalloc(&d_alpha, betas_size * sizeof(T));
+  cudaMalloc(&d_beta, betas_size * sizeof(T));
+
+  // Copy the data to the device
+  cudaMemcpy(d_x, x, data_size * sizeof(T), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_alpha, alpha, betas_size * sizeof(T), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_beta, beta, betas_size * sizeof(T), cudaMemcpyHostToDevice);
+
+  #ifdef DEBUG
+    cudaEventRecord(t2, 0);
+    cudaEventSynchronize(t2);
+    cudaEventElapsedTime(&elapsedMemcpyCG, t1, t2);
+  #endif
+
+  // Launch the kernel
+  int block_size = DEFAULT_BLOCK_SIZE;
+  kernel_launcher(d_x, d_y, d_alpha, d_beta, data_size, betas_size, block_size, CUDA_DEFAULT_STREAM);
+
+  #ifdef DEBUG
+    cudaEventRecord(t3, 0);
+    cudaEventSynchronize(t3);
+    cudaEventElapsedTime(&elapsedKernel, t2, t3);
+  #endif
+
+  // Copy the result back to the host
+  cudaMemcpy(y, d_y, data_size * betas_size * sizeof(T), cudaMemcpyDeviceToHost);
+
+  // Free the memory on the device
+  cudaFree(d_x);
+  cudaFree(d_y);
+  cudaFree(d_alpha);
+  cudaFree(d_beta);
+
+  #ifdef DEBUG
+    cudaEventRecord(t4, 0);
+    cudaEventSynchronize(t4);
+    cudaEventElapsedTime(&elapsedMemcpyGC, t3, t4);
+    cudaEventElapsedTime(&elapsedTotal, t1, t4);
+
+    cerr << "Full function time(events) = " << elapsedTotal / 1000 << endl;
+    cerr << "\tKernel execution time = " << elapsedKernel / 1000 << endl;
+    cerr << "\tMemory transfer time = " << elapsedMemcpyCG / 1000 << " + " << elapsedMemcpyGC / 1000 << endl;
+  #endif
+
+  return;
+}
+
+// TO DO
+template <typename T, typename K>
+void beta_array_cuda_streams(const T *x, T *y, const T *alpha, const T *beta, unsigned long data_size, unsigned long betas_size, K kernel_launcher, const unsigned int num_streams=2, const unsigned int chunks_per_stream=2){
+
+  return;
+
+}
+
+template <typename T, typename K>
 void beta_array_cuda_wrapper (const T *x, T *y, const T alpha, const T beta, unsigned long size, K kernel_launcher){
   size_t free_bytes = get_free_GPU_memory();
   size_t needed_bytes = ((2 * size ) + 2)* sizeof(T); // 2 arrays of size +
@@ -414,6 +522,36 @@ void beta_array_cuda_wrapper (const T *x, T *y, const T alpha, const T beta, uns
   return;
 }
 
+template <typename T, typename K>
+void beta_array_cuda_wrapper (const T *x, T *y, const T *alpha, const T *beta, unsigned long data_size, unsigned long betas_size, K kernel_launcher){
+  size_t free_bytes = get_free_GPU_memory();
+  size_t needed_bytes = ((data_size ) + (2 * betas_size) + (data_size * betas_size))* sizeof(T); // 2 arrays of size +
+                                                           // 1 extra element per stream 
+                                                           // (for odd distributions to fill the remainer element, 2 streams fixed)
+
+  #ifdef DEBUG
+    std::cerr << "! Executing GPU function." << std::endl;
+    std::cerr << "+-- Needed memory: " << (needed_bytes>>20) << " MegaBytes." << std::endl;
+    std::cerr << "+-- Free memory: " << (free_bytes>>20) << " MegaBytes." << std::endl;
+  #endif
+  if (needed_bytes < free_bytes){
+    // If i have enough memory, use the normal function
+    #ifdef DEBUG
+      std::cerr << "+- Using normal function." << std::endl;
+    #endif
+    beta_array_cuda<T, K>(x, y, alpha, beta, data_size, betas_size, kernel_launcher);
+  } else {
+    // If i don't have enough memory, use streams
+    unsigned int chunks_per_stream = (needed_bytes / free_bytes) + 1;
+    #ifdef DEBUG
+      std::cerr << "+- Using streams with " << chunks_per_stream << " chunks per stream." << std::endl;
+    #endif
+    beta_array_cuda_streams<T, K>(x, y, alpha, beta, data_size, betas_size, kernel_launcher, 2, chunks_per_stream);
+  }
+
+  return;
+}
+
 /* --------------- Export fuctions --------------- */
 
 
@@ -427,6 +565,22 @@ void betapdf_cuda(const double *x, double *y, const double alpha, const double b
   // If the memory type is DEVICE, we can use KernelLauncher function directly
   if (memory_type == Memory_Type::DEVICE){
     launch_betapdf_kernel(x, y, alpha, beta, size, DEFAULT_BLOCK_SIZE);
+  }
+  
+
+  return;
+}
+
+// CUDA kernel launch to compute the beta distribution
+void betapdf_cuda(const double *x, double *y, const double *alpha, const double *beta, unsigned long data_size, unsigned long betas_size, Memory_Type memory_type){
+
+  if (memory_type == Memory_Type::HOST){
+    beta_array_cuda_wrapper<double, KernelArrayLauncher>(x, y, alpha, beta, data_size, betas_size, launch_betapdf_kernel_array);
+  } 
+
+  // If the memory type is DEVICE, we can use KernelLauncher function directly
+  if (memory_type == Memory_Type::DEVICE){
+    launch_betapdf_kernel_array(x, y, alpha, beta, data_size, betas_size, DEFAULT_BLOCK_SIZE);
   }
   
 

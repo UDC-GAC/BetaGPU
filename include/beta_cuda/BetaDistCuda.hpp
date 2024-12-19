@@ -16,6 +16,8 @@ enum class Memory_Type {
 
 void betapdf_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size, Memory_Type memory_type=Memory_Type::HOST);
 
+void betapdf_cuda(const double *x, double *y, const double *alpha, const double *beta, unsigned long data_size, unsigned long betas_size, Memory_Type memory_type=Memory_Type::HOST);
+
 void betapdf_cuda(const float *x, float *y, const float alpha, const float beta, unsigned long size, Memory_Type memory_type=Memory_Type::HOST);
 
 void betacdf_cuda_GPU_CPU(const double *x, double *y, const double alpha, const double beta, unsigned long size, Memory_Type memory_type=Memory_Type::HOST);
