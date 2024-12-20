@@ -85,8 +85,8 @@ const T *GPU_Array<T>::get_device_data(){
 }
 
 template <typename T>
-T *GPU_Array<T>::device_data(){
-    if (this->memory_state == MemoryState::HOST_ONLY)
+T *GPU_Array<T>::device_data(bool require_updated){
+    if (require_updated && this->memory_state == MemoryState::HOST_ONLY)
         this->copy_to_device(this->size);
 
     this->memory_state = MemoryState::DEVICE_ONLY;
@@ -113,8 +113,8 @@ const T *GPU_Array<T>::get_host_data(){
 }
 
 template <typename T>
-T *GPU_Array<T>::host_data(){
-    if (this->memory_state == MemoryState::DEVICE_ONLY)
+T *GPU_Array<T>::host_data(bool require_updated){
+    if (require_updated && this->memory_state == MemoryState::DEVICE_ONLY)
         this->copy_to_host(this->size);
 
     this->memory_state = MemoryState::HOST_ONLY;

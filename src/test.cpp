@@ -211,7 +211,7 @@ TEST_F(GPU_ARRAY_TEST, SmallGPUArrayTestPDF) {
 
   betapdf_cuda(x.get_host_data(), y1.data(), alpha, beta, x.get_size());
 
-  betapdf_cuda(x.get_device_data(), y2.device_data(), alpha, beta, x.get_size(), Memory_Type::DEVICE);
+  betapdf_cuda(x.get_device_data(), y2.device_data(false), alpha, beta, x.get_size(), Memory_Type::DEVICE);
 
   for (int j = 0; j < SMALL_SIZE; j++) {
     EXPECT_EQ(y1.at(j), y2.get_host_data()[j]);
@@ -227,7 +227,7 @@ TEST_F(GPU_ARRAY_TEST, SmallGPUArrayTestFloatPDF) {
 
   betapdf_cuda(x_f.get_host_data(), y1.data(), alpha, beta, x.get_size());
 
-  betapdf_cuda(x_f.get_device_data(), y2.device_data(), alpha, beta, x.get_size(), Memory_Type::DEVICE);
+  betapdf_cuda(x_f.get_device_data(), y2.device_data(false), alpha, beta, x.get_size(), Memory_Type::DEVICE);
 
   for (int j = 0; j < SMALL_SIZE; j++) {
     EXPECT_EQ(y1.at(j), y2.get_host_data()[j]);
@@ -240,7 +240,7 @@ TEST_F(GPU_ARRAY_TEST, SmallGPUArrayTestCDF) {
 
   betacdf_cuda(x.get_host_data(), y1.data(), alpha, beta, x.get_size());
 
-  betacdf_cuda(x.get_device_data(), y2.device_data(), alpha, beta, x.get_size(), Memory_Type::DEVICE);
+  betacdf_cuda(x.get_device_data(), y2.device_data(false), alpha, beta, x.get_size(), Memory_Type::DEVICE);
 
   for (int j = 0; j < SMALL_SIZE; j++) {
     EXPECT_EQ(y1.at(j), y2.get_host_data()[j]);
@@ -250,7 +250,7 @@ TEST_F(GPU_ARRAY_TEST, SmallGPUArrayTestCDF) {
 TEST_F(GPU_ARRAY_TEST, SmallGPUArrayTestCDF_GPU_CPU) {
   GPU_Array<double> y2(SMALL_SIZE);
 
-  EXPECT_THROW(betacdf_cuda_GPU_CPU(x.get_device_data(), y2.device_data(), alpha, beta, x.get_size(), Memory_Type::DEVICE), std::runtime_error);
+  EXPECT_THROW(betacdf_cuda_GPU_CPU(x.get_device_data(), y2.device_data(false), alpha, beta, x.get_size(), Memory_Type::DEVICE), std::runtime_error);
 }
 
 /* ----- Tests for array functions ----- */

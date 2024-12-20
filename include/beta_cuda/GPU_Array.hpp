@@ -25,11 +25,11 @@ public:
 
 
     const T *get_device_data();
-    T *device_data();
+    T *device_data(bool require_updated=true);
     void set_device_data(const T *data, size_t size, bool copy_to_host=true);
 
     const T *get_host_data();
-    T *host_data();
+    T *host_data(bool require_updated=true);
     void set_host_data(const T *data, size_t size, bool copy_to_device=true);
 
     size_t get_size();
