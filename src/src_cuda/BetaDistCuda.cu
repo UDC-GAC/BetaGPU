@@ -213,6 +213,45 @@ __global__ void betacdf_CF_kernel(const double *x, double *y, double alpha, doub
     }
 }
 
+__global__ betacdf_CF_kernel_array(const double *x, double *y, const double *alpha, const double *beta, const double ln_beta, const size_t data_size, const size_t betas_size){
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // Read alphas and betas to shared memory
+    extern __shared__ double alpha_beta_shared[];
+    int betas_offset = betas_size * sizeof(double);
+    for (int i = 0; i < betas_size; i+=blockDim.x){
+        if (i + threadIdx.x < betas_size){
+            alpha_beta_shared[i+threadIdx.x] = alpha[i+threadIdx.x];
+            alpha_beta_shared[betas_offset + i+threadIdx.x] = beta[i+threadIdx.x];
+        }
+    }
+    __syncthreads();
+
+    // Process your data point with each distribution
+    if (idx < data_size){
+        double my_x = x[idx];
+        for (int i = 0; i < betas_size; i++){
+            double alpha_i = alpha_beta_shared[i];
+            double beta_i = alpha_beta_shared[betas_offset + i];
+
+            double limit = (alpha_i + 1.0) / (alpha_i + beta_i + 2.0);
+            double ln_pre = -ln_beta + alpha_i * log(my_x) + beta_i * log1p(-my_x);
+            double prefactor = exp(ln_pre);
+
+            double epsabs = my_x < limit ? 0. : 1. / (prefactor / beta_i) * CUDA_DBL_EPSILON; // Now every value can be one of two cases
+            double cf_a = my_x < limit ? alpha_i : beta_i;
+            double cf_b = my_x < limit ? beta_i : alpha_i;
+            double cf_x = my_x < limit ? my_x : 1. - my_x;
+            double cf = cuda_beta_cont_frac(cf_a, cf_b, cf_x, epsabs);
+
+            double term = prefactor * cf / cf_a;
+
+            double my_y = my_x < limit ? term : 1. - term;
+            y[data_size * i + idx] =  my_y;
+        }
+    }
+}
+
 // https://github.com/ampl/gsl/blob/master/specfunc/gamma_inc.c#L500
 __global__ void betacdf_la_sb_kernel(double *x, double *y, double alpha, double beta, size_t size){
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -291,6 +330,13 @@ inline void launch_betacdf_withCF_kernel(const double *d_x, double *d_y, double 
     betacdf_CF_kernel<<<n_blocks, block_size,0,stream>>>(d_x, d_y, alpha, beta, ln_beta, size);
 }
 
+inline void launch_betacdf_withCF_array(const double *d_x, double *d_y, const double *d_alpha, const double *d_beta, size_t data_size, size_t betas_size, int block_size, cudaStream_t stream=CUDA_DEFAULT_STREAM) {
+    int n_blocks = data_size / block_size + (data_size % block_size == 0 ? 0 : 1);
+    int shared_memory_size = 2 * betas_size * sizeof(double);
+    double ln_beta = gsl_sf_lnbeta(d_alpha[0], d_beta[0]);
+    betacdf_CF_kernel_array<<<n_blocks, block_size, shared_memory_size, stream>>>(d_x, d_y, d_alpha, d_beta, ln_beta, data_size, betas_size);
+}
+
 
 /* --------------- Auxiliar encapsulation functions --------------- */
 
@@ -307,6 +353,7 @@ size_t get_free_GPU_memory(){
   return free_bytes;
 }
 
+// Base / single distribution functions
 template <typename T, typename K>
 void beta_array_cuda(const T *x, T *y, const T alpha, const T beta, unsigned long size, K kernel_launcher){
 
@@ -417,6 +464,7 @@ void beta_array_cuda_streams(const T *x, T *y, const T alpha, const T beta, unsi
 
 }
 
+// Multiple distributions functions
 template <typename T, typename K>
 void beta_array_cuda(const T *x, T *y, const T *alpha, const T *beta, unsigned long data_size, unsigned long betas_size, K kernel_launcher){
 
@@ -492,6 +540,7 @@ void beta_array_cuda_streams(const T *x, T *y, const T *alpha, const T *beta, un
 
 }
 
+// Wrapper functions to decide if we need to use streams or not
 template <typename T, typename K>
 void beta_array_cuda_wrapper (const T *x, T *y, const T alpha, const T beta, unsigned long size, K kernel_launcher){
   size_t free_bytes = get_free_GPU_memory();
@@ -555,7 +604,7 @@ void beta_array_cuda_wrapper (const T *x, T *y, const T *alpha, const T *beta, u
 /* --------------- Export fuctions --------------- */
 
 
-// CUDA kernel launch to compute the beta distribution
+// CUDA kernel launch to compute the beta distribution PDF double
 void betapdf_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size, Memory_Type memory_type){
 
   if (memory_type == Memory_Type::HOST){
@@ -571,7 +620,7 @@ void betapdf_cuda(const double *x, double *y, const double alpha, const double b
   return;
 }
 
-// CUDA kernel launch to compute the beta distribution
+// CUDA kernel launch to compute the beta distribution PDF double with multiple distributions
 void betapdf_cuda(const double *x, double *y, const double *alpha, const double *beta, unsigned long data_size, unsigned long betas_size, Memory_Type memory_type){
 
   if (memory_type == Memory_Type::HOST){
@@ -587,7 +636,7 @@ void betapdf_cuda(const double *x, double *y, const double *alpha, const double 
   return;
 }
 
-// CUDA kernel launch to compute the beta distribution
+// CUDA kernel launch to compute the beta distribution PDF float
 void betapdf_cuda(const float *x, float *y, const float alpha, const float beta, unsigned long size, Memory_Type memory_type){
 
   if (memory_type == Memory_Type::HOST){
@@ -602,7 +651,7 @@ void betapdf_cuda(const float *x, float *y, const float alpha, const float beta,
   return;
 }
 
-// CUDA kernel launch to compute the beta distribution
+// CUDA kernel launch to compute the beta distribution CDF double
 void betacdf_cuda(const double *x, double *y, const double alpha, const double beta, unsigned long size, Memory_Type memory_type){
 
   if (memory_type == Memory_Type::HOST){
@@ -612,6 +661,21 @@ void betacdf_cuda(const double *x, double *y, const double alpha, const double b
   // If the memory type is DEVICE, we can use KernelLauncher function directly
   if (memory_type == Memory_Type::DEVICE){
     launch_betacdf_withCF_kernel(x, y, alpha, beta, size, DEFAULT_BLOCK_SIZE);
+  }
+
+  return;
+}
+
+// CUDA kernel launch to compute the beta distribution CDF double with multiple distributions
+void betacdf_cuda(const double *x, double *y, const double *alpha, const double *beta, unsigned long data_size, unsigned long betas_size, Memory_Type memory_type){
+
+  if (memory_type == Memory_Type::HOST){
+    beta_array_cuda_wrapper<double, KernelArrayLauncher>(x, y, alpha, beta, data_size, betas_size, launch_betacdf_withCF_array);
+  }
+
+  // If the memory type is DEVICE, we can use KernelLauncher function directly
+  if (memory_type == Memory_Type::DEVICE){
+    launch_betacdf_withCF_array(x, y, alpha, beta, data_size, betas_size, DEFAULT_BLOCK_SIZE);
   }
 
   return;
