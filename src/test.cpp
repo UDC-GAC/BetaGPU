@@ -261,8 +261,6 @@ TEST_F(GPU_ARRAY_TEST, SmallGPUArrayTestPDFArray) {
   std::array<double, 3> alpha_arr = {alpha, alpha*2., alpha*3.};
   std::array<double, 3> beta_arr = {beta, beta*2., beta*3.};
 
-
-
   betapdf_cuda(x.get_host_data(), y2.data(), alpha_arr.data(), beta_arr.data(), x.get_size(), 3);
 
   for (int i = 0; i < 3; i++) {
@@ -280,6 +278,13 @@ TEST_F(GPU_ARRAY_TEST, SmallGPUArrayTestCDFArray) {
   std::array<double, 3> beta_arr =  {beta, beta*2., beta*3.};
 
   betacdf_cuda(x.get_host_data(), y2.data(), alpha_arr.data(), beta_arr.data(), x.get_size(), 3);
+
+  for (int i = 0; i < 3; i++) {
+    betacdf_cuda(x.get_host_data(), y1.data(), alpha_arr[i], beta_arr[i], x.get_size());
+    for (int j = 0; j < SMALL_SIZE; j++) {
+      EXPECT_EQ(y1.at(j), y2.at(i*SMALL_SIZE + j));
+    }
+  }
 }
 
 int 
