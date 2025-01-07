@@ -57,7 +57,7 @@ __global__ void betapdf_kernel_array(const double *x, double *y, const double *a
 
     // Read alphas and betas to shared memory
     extern __shared__ double alpha_beta_shared[];
-    int betas_offset = betas_size * sizeof(double);
+    int betas_offset = betas_size;
     for (int i = 0; i < betas_size; i+=blockDim.x){
         if (i + threadIdx.x < betas_size){
             alpha_beta_shared[i+threadIdx.x] = alpha[i+threadIdx.x];
@@ -213,12 +213,12 @@ __global__ void betacdf_CF_kernel(const double *x, double *y, double alpha, doub
     }
 }
 
-__global__ betacdf_CF_kernel_array(const double *x, double *y, const double *alpha, const double *beta, const double ln_beta, const size_t data_size, const size_t betas_size){
+__global__ void betacdf_CF_kernel_array(const double *x, double *y, const double *alpha, const double *beta, const size_t data_size, const size_t betas_size){
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     // Read alphas and betas to shared memory
     extern __shared__ double alpha_beta_shared[];
-    int betas_offset = betas_size * sizeof(double);
+    int betas_offset = betas_size;
     for (int i = 0; i < betas_size; i+=blockDim.x){
         if (i + threadIdx.x < betas_size){
             alpha_beta_shared[i+threadIdx.x] = alpha[i+threadIdx.x];
@@ -234,8 +234,9 @@ __global__ betacdf_CF_kernel_array(const double *x, double *y, const double *alp
             double alpha_i = alpha_beta_shared[i];
             double beta_i = alpha_beta_shared[betas_offset + i];
 
+            double ln_beta = lgamma(alpha_i + beta_i) - lgamma(alpha_i) - lgamma(beta_i);
             double limit = (alpha_i + 1.0) / (alpha_i + beta_i + 2.0);
-            double ln_pre = -ln_beta + alpha_i * log(my_x) + beta_i * log1p(-my_x);
+            double ln_pre = ln_beta + alpha_i * log(my_x) + beta_i * log1p(-my_x);
             double prefactor = exp(ln_pre);
 
             double epsabs = my_x < limit ? 0. : 1. / (prefactor / beta_i) * CUDA_DBL_EPSILON; // Now every value can be one of two cases
@@ -330,11 +331,10 @@ inline void launch_betacdf_withCF_kernel(const double *d_x, double *d_y, double 
     betacdf_CF_kernel<<<n_blocks, block_size,0,stream>>>(d_x, d_y, alpha, beta, ln_beta, size);
 }
 
-inline void launch_betacdf_withCF_array(const double *d_x, double *d_y, const double *d_alpha, const double *d_beta, size_t data_size, size_t betas_size, int block_size, cudaStream_t stream=CUDA_DEFAULT_STREAM) {
+inline void launch_betacdf_withCF_array(const double *d_x, double *d_y, const double *d_alpha, const double *d_beta, size_t data_size, size_t betas_size, size_t block_size, cudaStream_t stream=CUDA_DEFAULT_STREAM) {
     int n_blocks = data_size / block_size + (data_size % block_size == 0 ? 0 : 1);
     int shared_memory_size = 2 * betas_size * sizeof(double);
-    double ln_beta = gsl_sf_lnbeta(d_alpha[0], d_beta[0]);
-    betacdf_CF_kernel_array<<<n_blocks, block_size, shared_memory_size, stream>>>(d_x, d_y, d_alpha, d_beta, ln_beta, data_size, betas_size);
+    betacdf_CF_kernel_array<<<n_blocks, block_size, shared_memory_size, stream>>>(d_x, d_y, d_alpha, d_beta, data_size, betas_size);
 }
 
 

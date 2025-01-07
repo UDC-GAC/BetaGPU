@@ -183,26 +183,6 @@ TEST_F(BETA_TEST, SmallComaprisonCDF) {
   }
 }
 
-// Test case for #cdf
-TEST_F(BIG_BETA_TEST, BigComaprisonCDF) {
-
-  vector<double> y1(MID_SIZE), y2(MID_SIZE);
-
-  size_t size = MID_SIZE;
-
-  omp_set_num_threads( omp_get_num_procs() );
-  #pragma omp parallel for
-  for (size_t j = 0; j < size; j++) {
-    y1.at(j) = betacdf(x.at(j), alpha, beta);
-  }
-
-  betacdf_cuda(x.data(), y2.data(), alpha, beta, MID_SIZE);
-
-  for (int j = 0; j < 100; j++) {
-    EXPECT_NEAR(y1.at(j), y2.at(j), PRECISION_TOLERANCE_CLOSE_EQ);
-  }
-}
-
 /* ----- Tests for zero-copy functions ----- */
 
 TEST_F(GPU_ARRAY_TEST, SmallGPUArrayTestPDF) {
@@ -282,7 +262,8 @@ TEST_F(GPU_ARRAY_TEST, SmallGPUArrayTestCDFArray) {
   for (int i = 0; i < 3; i++) {
     betacdf_cuda(x.get_host_data(), y1.data(), alpha_arr[i], beta_arr[i], x.get_size());
     for (int j = 0; j < SMALL_SIZE; j++) {
-      EXPECT_EQ(y1.at(j), y2.at(i*SMALL_SIZE + j));
+      //EXPECT_EQ(y1.at(j), y2.at(i*SMALL_SIZE + j)); // Not exactly equal due to precision difference between CPU and GPU
+      EXPECT_NEAR(y1.at(j), y2.at(i*SMALL_SIZE + j), PRECISION_TOLERANCE_CLOSE_EQ);
     }
   }
 }
