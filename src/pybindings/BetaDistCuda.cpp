@@ -1,4 +1,4 @@
-#include "BetaDistCuda.hpp"
+#include "beta_cuda/BetaDistCuda.hpp"
 
 #include <vector>
 #include <iostream>

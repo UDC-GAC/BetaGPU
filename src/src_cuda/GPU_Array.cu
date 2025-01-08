@@ -1,4 +1,4 @@
-#include "GPU_Array.hpp"
+#include "beta_cuda/GPU_Array.hpp"
 
 #include <new>
 

@@ -23,7 +23,7 @@ set(PYBIND11_CPP_STANDARD -std=c++17)
 
 include(GoogleTest)
 
-include_directories(BEFORE ${CMAKE_SOURCE_DIR}/include/beta_cuda)
+include_directories(BEFORE ${CMAKE_SOURCE_DIR}/include)
 
 file(GLOB_RECURSE GSL_LIB_FILES "src/src_ref/*.cpp")
 file(GLOB_RECURSE CUDA_LIB_FILES "src/src_cuda/*.cu")
